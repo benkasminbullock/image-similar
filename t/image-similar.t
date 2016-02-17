@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 use Test::More;
-use Image::Similar;
+use_ok ('Image::Similar');
 
 done_testing ();
 # Local variables:

@@ -1,2 +1,2 @@
-image_similar_t * T_PTROBJ
-Image::Similar T_PTROBJ
+simage_t * T_PTROBJ
+Image::Similar::Image T_PTROBJ

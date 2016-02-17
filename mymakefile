@@ -1,0 +1,4 @@
+all: similar-image.h
+
+similar-image.h: similar-image.c
+	cfunctions similar-image.c

@@ -17,3 +17,5 @@ ppport.h
 lib/Image/Similar.pod
 MANIFEST
 README
+# C file outputs
+similar-image.[ho]

@@ -25,3 +25,6 @@ MYMETA..*
 # Don't include the outputs from running the examples
 ^examples/*-out.txt$
 ^Similar.(?:c|o|bs)$
+# Personal makefile
+^mymakefile$
+^xt/.*$
