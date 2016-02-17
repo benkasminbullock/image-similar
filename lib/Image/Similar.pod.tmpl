@@ -3,7 +3,7 @@
 
 =head1 NAME
 
-Image::Similar - abstract here.
+Image::Similar - find out how similar two images are
 
 =head1 SYNOPSIS
 
@@ -16,7 +16,38 @@ commit [% commit.commit %] released on [% commit.date %].
 
 =head1 DESCRIPTION
 
-=head1 FUNCTIONS
+Compare two images.
 
-=cut
+=head1 METHODS
+
+=head2 new
+
+    my $is = Image::Similar->new ();
+
+=head2 load_image
+
+Using L<Imager>:
+
+    my $img = Imager->new ();
+    $img->read (file => 'my.jpg');
+    my $is = load_image ($img);
+
+=head2 diff
+
+    my $diff = $is1->diff ($is2);
+
+Find the difference between images C<$is1> and C<$is2>.
+
+=head1 SEE ALSO
+
+=over
+
+=item L<Image::Libpuzzle>
+
+This uses a similar algorithm to Image::Similar, but it requires
+installing a third-party library called libpuzzle, as well as the gd
+library.
+
+=back
+
 [% INCLUDE "author" %]

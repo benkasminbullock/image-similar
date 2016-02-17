@@ -1,4 +1,11 @@
 all: similar-image.h
 
+similar-image-test: similar-image-test.c similar-image.c similar-image.h
+	$(CC) $(CFLAGS) -o $@ similar-image-test.c similar-image.c -lm
+
 similar-image.h: similar-image.c
 	cfunctions similar-image.c
+
+clean:
+	rm -f similar-image-test
+	rm -f similar-image.h

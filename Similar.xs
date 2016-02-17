@@ -60,3 +60,12 @@ fill_grid (image)
 	Image::Similar::Image image
 CODE:
 	SIMAGE_CALL (simage_fill_grid (image));
+
+double
+image_diff (image1, image2)
+	Image::Similar::Image image1
+	Image::Similar::Image image2
+CODE:
+	SIMAGE_CALL (simage_diff (image1, image2, & RETVAL));
+OUTPUT:
+	RETVAL

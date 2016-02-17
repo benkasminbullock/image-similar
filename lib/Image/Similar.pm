@@ -42,14 +42,17 @@ sub new
 
 sub load_image_imager
 {
-    my ($imager) = @_;
+    my ($imager, %options) = @_;
     my $grey = $imager->convert (preset => 'gray');
+    if ($options{make_grey_png}) {
+	$grey->write (file => $options{make_grey_png});
+    }
     my $height = $grey->getheight ();
     my $width = $grey->getwidth ();
     my $is = Image::Similar->new (height => $height, width => $width);
     for my $y (0..$height - 1) {
 #	print "$y\n";
-	my @scanline = $imager->getscanline (y => $y);
+	my @scanline = $grey->getscanline (y => $y);
 	for my $x (0..$width -1) {
 	    # Dunno a better way to do this, please shout if you do.
 	    my ($grey, undef, undef, undef) = $scanline[$x]->rgba ();
@@ -100,9 +103,14 @@ sub write_png
 
 sub fill_grid
 {
-my ($s) = @_;
-$s->{image}->fill_grid ();
+    my ($s) = @_;
+    $s->{image}->fill_grid ();
 }
 
+sub diff
+{
+    my ($s1, $s2) = @_;
+    return $s1->{image}->image_diff ($s2->{image});
+}
 
 1;

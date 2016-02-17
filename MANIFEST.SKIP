@@ -28,3 +28,11 @@ MYMETA..*
 # Personal makefile
 ^mymakefile$
 ^xt/.*$
+# Object files
+\.o$
+# .gitignore
+\.gitignore$
+# File for testing C file from C
+^similar-image-test\.c$
+# File for making images
+t/images/chess/make-chessboards\.pl$
