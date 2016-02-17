@@ -36,3 +36,4 @@ MYMETA..*
 ^similar-image-test\.c$
 # File for making images
 t/images/chess/make-chessboards\.pl$
+t/images/lenagercke/.*
