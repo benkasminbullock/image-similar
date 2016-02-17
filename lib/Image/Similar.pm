@@ -38,6 +38,12 @@ sub new
     return $is;
 }
 
+sub fill_grid
+{
+    my ($s) = @_;
+    $s->{image}->fill_grid ();
+}
+
 # Load an image assuming it's from Imager.
 
 sub load_image_imager
@@ -64,6 +70,67 @@ sub load_image_imager
 	    $is->{image}->set_pixel ($x, $y, $grey);
 	}
     }
+    $is->fill_grid ();
+    return $is;
+}
+
+sub load_image_libpng
+{
+    eval "use Image::PNG::Libpng;";
+    if ($@) {
+	carp "Error loading Image::PNG::Libpng: $@";
+	return undef;
+    }
+    my ($image) = @_;
+#    print "Loading $image\n";
+    my $ihdr = $image->get_IHDR ();
+    my $height = $ihdr->{height};
+my $width = $ihdr->{width};
+    my $is = Image::Similar->new (height => $height,
+				  width => $width);
+    my $rows = $image->get_rows ();
+    if ($ihdr->{color_type} == 0) {
+	# GRAY
+	for my $y (0..$height-1) {
+	    for my $x (0..$width-1) {
+		my $grey = ord (substr ($rows->[$y], $x, 1));
+		$is->{image}->set_pixel ($x, $y, $grey);
+	    }
+	}
+    }
+    elsif ($ihdr->{color_type} = 4) {
+	# GRAY_ALPHA
+	carp "Discarding alpha channel and ignoring background";
+	for my $y (0..$height-1) {
+	    for my $x (0..$width-1) {
+		my $grey = ord (substr ($rows->[$y], $x * 2, 1));
+		$is->{image}->set_pixel ($x, $y, $grey);
+	    }
+	}
+    }
+    elsif ($ihdr->{color_type} = 2 || $ihdr->{color_type} == 6) {
+	# RGB or RGBA
+	my $offset = 3;
+	if ($ihdr->{color_type} == 6) {
+	    $offset = 4;
+	    carp "Discarding alpha channel and ignoring background";
+	}
+	for my $y (0..$height-1) {
+	    for my $x (0..$width-1) {
+		my $r = ord (substr ($rows->[$y], $x * $offset, 1));
+		my $g = ord (substr ($rows->[$y], $x * $offset + 1, 1));
+		my $b = ord (substr ($rows->[$y], $x * $offset + 2, 1));
+		# https://metacpan.org/pod/distribution/Imager/lib/Imager/Transformations.pod
+		my $grey = 0.222 * $r + 0.707 * $g + 0.071 * $b;
+		$grey = int ($grey + 0.5);
+		$is->{image}->set_pixel ($x, $y, $grey);
+	    }
+	}
+    }
+    else {
+	carp "Cannot handle image of colour type $ihdr->{color_type}";
+    }
+    $is->fill_grid ();
     return $is;
 }
 
@@ -73,6 +140,9 @@ sub load_image
     my $imtype = ref $image;
     if ($imtype eq 'Imager') {
 	return load_image_imager ($image);
+    }
+    elsif ($imtype eq 'Image::PNG::Libpng') {
+	return load_image_libpng ($image);
     }
     carp "Unknown object type $imtype, cannot load this image";
     return undef;
@@ -99,12 +169,6 @@ sub write_png
     }
     $png->set_rows ($rows);
     $png->write_png_file ($filename);
-}
-
-sub fill_grid
-{
-    my ($s) = @_;
-    $s->{image}->fill_grid ();
 }
 
 sub diff

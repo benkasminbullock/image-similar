@@ -41,6 +41,7 @@ typedef enum {
     simage_memory_failure,
     /* x or y is outside the image dimensions. */
     simage_status_bounds,
+simage_status_bad_image,
 }
 simage_status_t;
 
@@ -172,15 +173,15 @@ simage_fill_entry (simage_t * s, int i, int j)
     x_max = round (xd + s->p / 2.0);
     y_max = round (yd + s->p / 2.0);
     total = 0.0;
-    for (px = x_min; px <= x_max; px++) {
-	if (px < 0 || px >= s->width) {
-	    fprintf (stderr, "overflow %d\n", px);
-	}
 	for (py = y_min; py <= y_max; py++) {
 	    if (py < 0 || py >= s->height) {
 		fprintf (stderr, "overflow %d\n", py);
 	    }
-	    total += s->data[px * s->width + py];
+    for (px = x_min; px <= x_max; px++) {
+	if (px < 0 || px >= s->width) {
+	    fprintf (stderr, "overflow %d\n", px);
+	}
+	    total += s->data[py * s->width + px];
 	}
     }
     size = (x_max - x_min + 1) * (y_max - y_min + 1);
@@ -197,11 +198,7 @@ simage_fill_entry (simage_t * s, int i, int j)
 	return simage_status_bounds;
     }
     s->grid[entry].average_grey_level = grey;
-	/*
-	  printf ("%d %d %d %d %g %d\n", x_min, y_min, x_max, y_max,
-	  total, (int) round (total / ((double) size)));
-	*/
-	return simage_ok;
+    return simage_ok;
 }
 
 /* Go around the image and make the average values for each of the
@@ -212,6 +209,11 @@ simage_fill_entries (simage_t * s)
 {
     int i;
     int j;
+    if (s->width == 0 || s->height == 0) {
+	fprintf (stderr, "%s:%d: empty image w/h %d/%d.\n",
+		 __FILE__, __LINE__, s->width, s->height);
+	return simage_status_bad_image;
+    }
     s->w10 = ((double) s->width) / ((double) (SIZE + 1));
     s->h10 = ((double) s->height) / ((double) (SIZE + 1));
     for (i = 0; i < SIZE; i++) {
@@ -306,7 +308,7 @@ simage_make_point_diffs (simage_t * s, int x, int y)
 	    count = xo_yo_to_count (xo, yo);
 	    // Put the difference into d[count] of the current point.
 	    thispoint->d[count] = diff (thisgrey, thatgrey);
-	    //fprintf(stderr, "# %d %d %d\n", thisentry, count, thispoint->d[count]);
+//	    fprintf (stderr, "# %d %d %d\n", thisentry, count, thispoint->d[count]);
 	}
     }
     return simage_ok;
@@ -328,9 +330,28 @@ simage_make_differences (simage_t * s)
     return simage_ok;
 }
 
+#define MAXDIM 10000
+
+simage_status_t
+simage_check_image (simage_t * s)
+{
+    if (s->width == 0 || s->height == 0) {
+	fprintf (stderr, "%s:%d: empty image w/h %d/%d.\n",
+		 __FILE__, __LINE__, s->width, s->height);
+	return simage_status_bad_image;
+    }
+    if (s->width > MAXDIM || s->height > MAXDIM) {
+	fprintf (stderr, "%s:%d: oversize image w/h %d/%d.\n",
+		 __FILE__, __LINE__, s->width, s->height);
+	return simage_status_bad_image;
+    }
+    return simage_ok;
+}
+
 simage_status_t
 simage_fill_grid (simage_t * s)
 {
+    CALL (simage_check_image (s));
     CALL (simage_fill_entries (s));
     CALL (simage_make_differences (s));
     return simage_ok;

@@ -35,6 +35,15 @@ ok ($is300);
 $is300->fill_grid ();
 print $is->diff ($is300), "\n";
 print "200-300 diff: ", $is200->diff ($is300), "\n";
-my $lena = Imager->new ();
+#my $lena = Imager->new ();
+#$lena->read (file => "$Bin/../xt/lena-gercke.jpg");
+#my $img = load_image ($lena);
+#for my $s (1..10) {
+#my $size = $s * 100;
+#my $lenax = Imager->new ();
+#$lenax->read (file => "$Bin/images/lenagercke/lena-$size.png");
+#my $imgx = load_image ($lenax);
+#    print "# " , $img->diff ($imgx), "\n";
+#}
 done_testing ();
 exit;

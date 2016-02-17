@@ -6,7 +6,13 @@
 #include "similar-image.h"
 #include "image-similar-perl.c"
 
-#define SIMAGE_CALL(x) x
+#define SIMAGE_CALL(x) {\
+simage_status_t status;\
+status = x;\
+if (status != simage_ok) {\
+croak ("error %d from similar-image library", status);\
+}\
+}
 
 typedef simage_t * Image__Similar__Image;
 

@@ -18,11 +18,7 @@ commit [% commit.commit %] released on [% commit.date %].
 
 Compare two images.
 
-=head1 METHODS
-
-=head2 new
-
-    my $is = Image::Similar->new ();
+=head1 FUNCTIONS
 
 =head2 load_image
 
@@ -31,6 +27,16 @@ Using L<Imager>:
     my $img = Imager->new ();
     $img->read (file => 'my.jpg');
     my $is = load_image ($img);
+
+The return value is an Image::Similar object.
+
+=head1 METHODS
+
+=head2 new
+
+    my $is = Image::Similar->new (height => 10, width => 10);
+
+This is no use at the moment, use L</load_image> instead.
 
 =head2 diff
 
