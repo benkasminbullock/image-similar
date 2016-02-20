@@ -10,7 +10,7 @@ require Exporter;
 use warnings;
 use strict;
 use Carp;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 require XSLoader;
 XSLoader::load ('Image::Similar', $VERSION);
 use Scalar::Util 'looks_like_number';
@@ -175,6 +175,12 @@ sub diff
 {
     my ($s1, $s2) = @_;
     return $s1->{image}->image_diff ($s2->{image});
+}
+
+sub signature
+{
+    my ($s) = @_;
+return $s->{image}->signature ();
 }
 
 1;

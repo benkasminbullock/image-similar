@@ -1,5 +1,10 @@
 Revision history for Perl module Image::Similar
 
+0.02 2016-02-20
+
+- Add signature method
+- Test whether Imager can handle PNG type in tests
+
 0.01 2016-02-16
 
 - Initial version

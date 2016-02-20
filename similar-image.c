@@ -18,6 +18,7 @@ typedef struct point {
 point_t;
 
 #define SIZE 9
+#define DIRECTIONS 8
 
 typedef struct simage {
     /* The width of the image in pixels. */
@@ -41,7 +42,7 @@ typedef enum {
     simage_memory_failure,
     /* x or y is outside the image dimensions. */
     simage_status_bounds,
-simage_status_bad_image,
+    simage_status_bad_image,
 }
 simage_status_t;
 
@@ -173,14 +174,14 @@ simage_fill_entry (simage_t * s, int i, int j)
     x_max = round (xd + s->p / 2.0);
     y_max = round (yd + s->p / 2.0);
     total = 0.0;
-	for (py = y_min; py <= y_max; py++) {
-	    if (py < 0 || py >= s->height) {
-		fprintf (stderr, "overflow %d\n", py);
-	    }
-    for (px = x_min; px <= x_max; px++) {
-	if (px < 0 || px >= s->width) {
-	    fprintf (stderr, "overflow %d\n", px);
+    for (py = y_min; py <= y_max; py++) {
+	if (py < 0 || py >= s->height) {
+	    fprintf (stderr, "overflow %d\n", py);
 	}
+	for (px = x_min; px <= x_max; px++) {
+	    if (px < 0 || px >= s->width) {
+		fprintf (stderr, "overflow %d\n", px);
+	    }
 	    total += s->data[py * s->width + px];
 	}
     }
@@ -238,6 +239,37 @@ int xo_yo_to_count (int xo, int yo)
 	count = (xo + 1) + 3 * (yo + 1) - 1;
     }
     return count;
+}
+
+simage_status_t
+count_to_xo_yo (int count, int * xo, int * yo)
+{
+    if (count < 3) {
+	* yo = -1;
+	* xo = count - 1;
+	return simage_ok;
+    }
+    if (count < 5) {
+	* yo = 0;
+	if (count == 3) {
+	    * xo = -1;
+	}
+	else if (count == 4) {
+	    * xo = 1;
+	}
+	else {
+	    return simage_status_bounds;
+	}
+	return simage_ok;
+    }
+    if (count < DIRECTIONS) {
+	* yo = 1;
+	* xo = count - 6;
+	return simage_ok;
+    }
+    fprintf (stderr, "%s:%d: count %d >= DIRECTIONS %d.\n",
+	     __FILE__, __LINE__, count, DIRECTIONS);
+    return simage_status_bounds;
 }
 
 int diff (int thisgrey, int thatgrey)
@@ -308,7 +340,7 @@ simage_make_point_diffs (simage_t * s, int x, int y)
 	    count = xo_yo_to_count (xo, yo);
 	    // Put the difference into d[count] of the current point.
 	    thispoint->d[count] = diff (thisgrey, thatgrey);
-//	    fprintf (stderr, "# %d %d %d\n", thisentry, count, thispoint->d[count]);
+	    //	    fprintf (stderr, "# %d %d %d\n", thisentry, count, thispoint->d[count]);
 	}
     }
     return simage_ok;
@@ -369,7 +401,7 @@ simage_diff (simage_t * s1, simage_t * s2, double * total_diff)
     total2 = 0;
     for (cell = 0; cell < SIZE * SIZE; cell++) {
 	int direction;
-	for (direction = 0; direction < 8; direction++) {
+	for (direction = 0; direction < DIRECTIONS; direction++) {
 	    int diff;
 	    int s1cd;
 	    int s2cd;
@@ -389,3 +421,67 @@ simage_diff (simage_t * s1, simage_t * s2, double * total_diff)
     *total_diff = ((double) total) / ((double)(total1 + total2));
     return simage_ok;
 }
+
+	    /* Check whether this direction and cell point to another
+	       cell or are outside the image. */
+
+int inside (int cell, int direction)
+{
+    int x;
+    int y;
+    int xo;
+    int yo;
+    int nextcell;
+    x = cell % SIZE;
+    y = cell / SIZE;
+    count_to_xo_yo (direction, & xo, & yo);
+    nextcell = x_y_to_entry (x + xo, y + yo);
+    if (nextcell == OUTSIDE) {
+	return 0;
+    }
+    return 1;
+}
+
+
+simage_status_t
+simage_signature (simage_t * s, char ** signature_ptr, int * signature_length)
+{
+    int cell;
+    int max_size;
+    int sl;
+    char * signature;
+    max_size = DIRECTIONS * SIZE * SIZE;
+    signature = calloc (max_size + 1, sizeof (unsigned char));
+    if (! signature) {
+	fprintf (stderr, "%s:%d: memory error.\n", __FILE__, __LINE__);
+	return simage_memory_failure;
+    }
+    sl = 0;
+    for (cell = 0; cell < SIZE * SIZE; cell++) {
+	int direction;
+	for (direction = 0; direction < DIRECTIONS; direction++) {
+	    if (inside (cell, direction)) {
+		int value;
+		value = s->grid[cell].d[direction] + 2 + '0';
+		if (value < '0' || value > '5') {
+		    fprintf (stderr, "%s:%d: overflow %d at cell=%d direction=%d",
+			     __FILE__, __LINE__, value, cell, direction);
+		    return simage_status_bounds;
+		}
+		signature[cell * DIRECTIONS + direction] = (char) value;
+		sl++;
+	    }
+	}
+    }
+    * signature_ptr = signature;
+    * signature_length = sl;
+    
+    return simage_ok;
+}
+
+simage_status_t simage_free_signature (char * signature)
+{
+    free (signature);
+    return simage_ok;
+}
+

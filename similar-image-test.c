@@ -18,12 +18,28 @@ static void
 test_xo_yo_to_count (int * test)
 {
     int count;
+    int xo, yo;
+    simage_status_t status;
     count = xo_yo_to_count (-1, -1);
     OK (count == 0, (*test), "%d should be 0\n", count);
+    status = count_to_xo_yo (count, & xo, & yo);
+    OK (status == simage_ok, (*test), "status is OK");
+    OK (xo == -1, (*test), "got correct value %d for xo", xo);
+    OK (yo == -1, (*test), "got correct value %d for yo", yo);
     count = xo_yo_to_count (-1, 0);
     OK (count == 3, (*test), "%d should be 3\n", count);
+    status = count_to_xo_yo (count, & xo, & yo);
+    OK (status == simage_ok, (*test), "status is OK");
+    OK (xo == -1, (*test), "got correct value %d for xo", xo);
+    OK (yo == 0, (*test), "got correct value %d for yo", yo);
     count = xo_yo_to_count (1, 1);
     OK (count == 7, (*test), "%d should be 7\n", count);
+    status = count_to_xo_yo (count, & xo, & yo);
+    OK (status == simage_ok, (*test), "status is OK");
+    OK (xo == 1, (*test), "got correct value %d for xo", xo);
+    OK (yo == 1, (*test), "got correct value %d for yo", yo);
+    status = count_to_xo_yo (100, & xo, & yo);
+    OK (status != simage_ok, (*test), "bad status for impossible direction");
 }
 
 static void
@@ -58,6 +74,25 @@ test_x_y_to_entry (int * test)
     OK (entry == expect, (*test), "%d should be %d", entry, expect);
 }
 
+static void
+test_inside (int * test)
+{
+int cell;
+int direction;
+cell = 0;
+direction = 4;
+OK (inside (cell, direction), (*test), "%d %d is inside", cell, direction);
+cell = 0;
+direction = 0;
+OK (! inside (cell, direction), (*test), "%d %d is not inside", cell, direction);
+cell = 80;
+direction = 0;
+OK (inside (cell, direction), (*test), "%d %d is inside", cell, direction);
+cell = 80;
+direction = 7;
+OK (! inside (cell, direction), (*test), "%d %d is not inside", cell, direction);
+}
+
 int main ()
 {
     // Test counter.
@@ -66,6 +101,7 @@ int main ()
 
     test_xo_yo_to_count (& test);
     test_x_y_to_entry (& test);
+    test_inside (& test);
     // Print the test plan.
     printf ("1..%d\n", test);
     return 0;

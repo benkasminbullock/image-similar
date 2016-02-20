@@ -14,6 +14,11 @@ eval "use Imager;";
 if ($@) {
     plan (skip_all => "Imager not available: $@ error on loading");
 }
+my @read_types = Imager->read_types ();
+my $png_ok = grep /\bpng\b/i, @read_types;
+if (! $png_ok) {
+    plan (skip_all => "local version of Imager doesn't support PNG for reading");
+}
 my $chess100 = Imager->new ();
 $chess100->read (file => "$Bin/images/chess/chess-100.png")
     or die $chess100->errstr ();

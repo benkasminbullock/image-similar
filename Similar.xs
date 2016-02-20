@@ -75,3 +75,16 @@ CODE:
 	SIMAGE_CALL (simage_diff (image1, image2, & RETVAL));
 OUTPUT:
 	RETVAL
+
+SV *
+signature (image)
+	Image::Similar::Image image
+PREINIT:
+	int signature_length;
+	char * signature;
+CODE:
+	SIMAGE_CALL (simage_signature (image, & signature, & signature_length));
+	RETVAL = newSVpv (signature, (STRLEN) signature_length);
+	simage_free_signature (signature);
+OUTPUT:
+	RETVAL

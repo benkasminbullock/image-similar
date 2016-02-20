@@ -16,7 +16,30 @@ commit [% commit.commit %] released on [% commit.date %].
 
 =head1 DESCRIPTION
 
-Compare two images.
+This is an experimental module for comparing images. It uses a
+simplified form of the algorithm described in L</An image signature
+for any kind of image> to calculate image signatures and distances
+between images.
+
+The module does not contain its own image-reading facility, so images
+must be loaded to the module via one of the following supported Perl
+modules:
+
+=over
+
+=item L<Imager>
+
+All image types are supported.
+
+=item L<Image::PNG::Libpng>
+
+Image::Similar currently supports GRAY, GRAY_ALPHA, RGB, and RGBA
+C<Image::PNG::Libpng> image types, but not paletted image types. It
+only supports bit depths of eight.
+
+=back
+
+Use L</load_image> to load the image.
 
 =head1 FUNCTIONS
 
@@ -24,9 +47,11 @@ Compare two images.
 
 Using L<Imager>:
 
-    my $img = Imager->new ();
-    $img->read (file => 'my.jpg');
-    my $is = load_image ($img);
+[% INCLUDE "imager.pl" | xtidy %]
+
+Using L<Image::PNG::Libpng>:
+
+[% INCLUDE "libpng.pl" | xtidy %]
 
 The return value is an Image::Similar object.
 
@@ -36,15 +61,131 @@ The return value is an Image::Similar object.
 
     my $is = Image::Similar->new (height => 10, width => 10);
 
-This is no use at the moment, use L</load_image> instead.
+Unless you want to change internals, use L</load_image> instead of
+this.
+
+The returned image currently contains a field C<< $is->{image} >>
+which you need to use the L</set_pixel> method on to set the pixels.
 
 =head2 diff
 
     my $diff = $is1->diff ($is2);
 
-Find the difference between images C<$is1> and C<$is2>.
+This returns a floating-point number which is the difference between
+images C<$is1> and C<$is2>. This is meant to be approximately the same
+value as given by L<Image::Libpuzzle/vector_euclidean_length()>, but
+no validation has been carried out yet.
+
+=head1 TESTING AND INTERNAL METHODS
+
+This section lists the testing and internal methods of the module, for
+people interested in extending or otherwise improving it. Since these
+are internal private methods, these are subject to change without
+notice.
+
+=head2 write_png
+
+    $is->write_png ('test.png');
+
+This is used in conjunction with L<Image::PNG::Libpng/png_compare>
+(version 0.42 or later) to check that Image::Similar has correctly
+read in the image, by writing out Image::Similar's internal data as a
+PNG file.
+
+=head2 load_image_imager
+
+    my $is = load_image_imager ($imager, %options);
+
+This is the internal routine used by L</load_image> to load L<Imager>
+images. The options are
+
+=over
+
+=item make_grey_png
+
+    my $is = load_image_imager ($imager, make_grey_png => 'imager.png');
+
+Make the greyscale PNG for comparing to Image::Similar's internal
+version. See L</write_png> for details.
+
+=back
+
+=head2 load_image_libpng
+
+    my $is = load_image_libpng ($libpng);
+
+This loads an image from the return value of
+L<Image::PNG::Libpng/read_png_file>.
+
+=head2 signature
+
+    my $sig = $is->signature ();
+
+Get the signature of the image.
+
+=head2 INTERNAL Image::Similar::Image METHODS
+
+These methods work on the XS object within an Image::Similar, which is
+called Image::Similar::Image.
+
+=head3 fill_grid
+
+    fill_grid ($img);
+
+Calculate the image's signature and store it within C<$img>.
+
+=head3 image_diff
+
+    my $diff = image_diff ($img1, $img2);
+
+Compute the value for L</diff>.
+
+=head3 set_pixel
+
+    $img->set_pixel ($x, $y, $grey);
+
+C<$x> and C<$y> need to be integers, and C<$grey> needs to be an
+integer within 0-255.
+
+=head3 get_rows
+
+    my $rows = $img->get_rows ();
+
+Get the greyscale pixels from C<$img> as an array reference C<$rows>
+containing strings of bytes, one byte per pixel.
+
+=head3 signature
+
+    my $sig = $image->signature ();
+
+=head1 KNOWN PROBLEMS
+
+=head2 Unimplemented parts of the original algorithm
+
+The following parts of the original algorithm are unimplemented as of
+this version:
+
+=over
+
+=item Cropping
+
+The 5% and 95% image cropping methods described in the paper are not
+used.
+
+=item Soft pixels
+
+The soft pixel method is not used.
+
+=item Histogram of image
+
+There is no balancing of the greyscale of the image using a histogram,
+it only uses the raw pixel values.
+
+=back
 
 =head1 SEE ALSO
+
+=head2 Other CPAN modules
 
 =over
 
@@ -52,7 +193,20 @@ Find the difference between images C<$is1> and C<$is2>.
 
 This uses a similar algorithm to Image::Similar, but it requires
 installing a third-party library called libpuzzle, as well as the gd
-library.
+library. 
+
+=back
+
+=head2 References
+
+=over
+
+=item An image signature for any kind of image
+
+I<An image signature for any kind of image> by H. Chi Wong, Marshall
+Bern, and David Goldberg, published in I<Proceedings: 2002
+International Conference on Image Processing>, Volume 1, date 22-25
+September 2002.
 
 =back
 
