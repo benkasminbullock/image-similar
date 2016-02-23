@@ -4,6 +4,7 @@ use strict;
 use base 'Exporter';
 our @EXPORT_OK = qw/
 		       load_image
+		       load_signature
 		   /;
 our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
@@ -69,6 +70,26 @@ sub fill_grid
     return;
 }
 
+# Load an image assuming it's from GD.
+
+sub load_image_gd
+{
+    my ($gd, %options) = @_;
+    my ($width, $height) = $gd->getBounds ();
+    my $is = Image::Similar->new (height => $height, width => $width);
+    my $image = $is->{image};
+    for my $y (0..$height - 1) {
+	for my $x (0..$width - 1) {
+	    my $index = $gd->getPixel ($x, $y);
+	    my ($r, $g, $b) = $gd->rgb ($index);
+	    my $greypixel = round (red * $r + green * $g + blue * $b);
+#	    print "$x $y $r $g $b $greypixel\n";
+	    $image->set_pixel ($x, $y, $greypixel);
+	}
+    }
+    return $is;
+}
+
 # Load an image assuming it's from Imager.
 
 sub load_image_imager
@@ -95,7 +116,6 @@ sub load_image_imager
 	    $is->{image}->set_pixel ($x, $y, $greypixel);
 	}
     }
-    $is->fill_grid ();
     return $is;
 }
 
@@ -176,32 +196,48 @@ sub load_image_libpng
     else {
 	carp "Cannot handle image of colour type $ihdr->{color_type}";
     }
-    $is->fill_grid ();
     return $is;
 }
 
 sub load_image
 {
     my ($image) = @_;
+    my $is;
     my $imtype = ref $image;
     if ($imtype eq 'Imager') {
-	return load_image_imager ($image);
+	$is = load_image_imager ($image);
     }
     elsif ($imtype eq 'Image::PNG::Libpng') {
-	return load_image_libpng ($image);
+	$is = load_image_libpng ($image);
     }
-    carp "Unknown object type $imtype, cannot load this image";
-    return undef;
+    elsif ($imtype eq 'GD::Image') {
+	$is = load_image_gd ($image);
+    }
+    else {
+	carp "Unknown object type $imtype, cannot load this image";
+	return undef;
+    }
+    $is->fill_grid ();
+    return $is;
 }
 
-sub load_sig
+sub load_signature
 {
-my ($sig) = @_;
+    my ($sig) = @_;
+    my $is = bless {}, 'Image::Similar';
+    $is->{image} = Image::Similar::Image::fill_from_sig ($sig);
+    return $is;
 }
 
 sub sig_diff
 {
-my ($image, $sig) = @_;
+    my ($is, $sig) = @_;
+    # Get the signature out of the image
+    my $image1 = $is->{image};
+    my $image2 = Image::Similar::Image::fill_from_sig ($sig);
+    # Compare the two signatures and put the result in "diff".
+    my $diff = Image::Similar::Image::image_diff ($image1, $image2);
+    return $diff;
 }
 
 sub Image::Similar::write_png

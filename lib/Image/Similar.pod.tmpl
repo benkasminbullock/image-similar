@@ -27,11 +27,23 @@ modules:
 
 =over
 
+=item L<GD>
+
+All image types are supported. RGB images are combined to greyscale
+using constants taken from the source code of L<Imager>.
+
 =item L<Imager>
 
-All image types are supported.
+All image types are supported. Unless you only need to compare PNG
+images, and if you have no prior preference, we suggest using Imager
+since it is a very well-behaved module. The conversion to greyscale is
+done using Imager's own routines.
 
 =item L<Image::PNG::Libpng>
+
+This is used for some internals of Image::Similar related to testing
+thus it was installed when you installed Image::Similar. However,
+Image::PNG::Libpng is only for PNG images.
 
 Image::Similar currently supports GRAY, GRAY_ALPHA, RGB, and RGBA
 C<Image::PNG::Libpng> image types, but not paletted image types. It
@@ -117,6 +129,10 @@ This is used in conjunction with L<Image::PNG::Libpng/png_compare>
 (version 0.42 or later) to check that Image::Similar has correctly
 read in the image, by writing out Image::Similar's internal data as a
 PNG file.
+
+=head2 load_image_gd
+
+    my $is = load_image_gd ($imager, %options);
 
 =head2 load_image_imager
 

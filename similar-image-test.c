@@ -15,30 +15,30 @@
 
 
 static void
-test_xo_yo_to_count (int * test)
+test_xo_yo_to_direction (int * test)
 {
-    int count;
+    int direction;
     int xo, yo;
     simage_status_t status;
-    count = xo_yo_to_count (-1, -1);
-    OK (count == 0, (*test), "%d should be 0\n", count);
-    status = count_to_xo_yo (count, & xo, & yo);
+    direction = xo_yo_to_direction (-1, -1);
+    OK (direction == 0, (*test), "%d should be 0\n", direction);
+    status = direction_to_xo_yo (direction, & xo, & yo);
     OK (status == simage_ok, (*test), "status is OK");
     OK (xo == -1, (*test), "got correct value %d for xo", xo);
     OK (yo == -1, (*test), "got correct value %d for yo", yo);
-    count = xo_yo_to_count (-1, 0);
-    OK (count == 3, (*test), "%d should be 3\n", count);
-    status = count_to_xo_yo (count, & xo, & yo);
+    direction = xo_yo_to_direction (-1, 0);
+    OK (direction == 3, (*test), "%d should be 3\n", direction);
+    status = direction_to_xo_yo (direction, & xo, & yo);
     OK (status == simage_ok, (*test), "status is OK");
     OK (xo == -1, (*test), "got correct value %d for xo", xo);
     OK (yo == 0, (*test), "got correct value %d for yo", yo);
-    count = xo_yo_to_count (1, 1);
-    OK (count == 7, (*test), "%d should be 7\n", count);
-    status = count_to_xo_yo (count, & xo, & yo);
+    direction = xo_yo_to_direction (1, 1);
+    OK (direction == 7, (*test), "%d should be 7\n", direction);
+    status = direction_to_xo_yo (direction, & xo, & yo);
     OK (status == simage_ok, (*test), "status is OK");
     OK (xo == 1, (*test), "got correct value %d for xo", xo);
     OK (yo == 1, (*test), "got correct value %d for yo", yo);
-    status = count_to_xo_yo (100, & xo, & yo);
+    status = direction_to_xo_yo (100, & xo, & yo);
     OK (status != simage_ok, (*test), "bad status for impossible direction");
 }
 
@@ -77,29 +77,29 @@ test_x_y_to_entry (int * test)
 static void
 test_inside (int * test)
 {
-int cell;
-int direction;
-cell = 0;
-direction = 4;
-OK (inside (cell, direction), (*test), "%d %d is inside", cell, direction);
-cell = 0;
-direction = 0;
-OK (! inside (cell, direction), (*test), "%d %d is not inside", cell, direction);
-cell = 80;
-direction = 0;
-OK (inside (cell, direction), (*test), "%d %d is inside", cell, direction);
-cell = 80;
-direction = 7;
-OK (! inside (cell, direction), (*test), "%d %d is not inside", cell, direction);
+    int cell;
+    int direction;
+    cell = 0;
+    direction = 4;
+    OK (inside (cell, direction), (*test), "%d %d is inside", cell, direction);
+    cell = 0;
+    direction = 0;
+    OK (! inside (cell, direction), (*test), "%d %d is not inside", cell, direction);
+    cell = 80;
+    direction = 0;
+    OK (inside (cell, direction), (*test), "%d %d is inside", cell, direction);
+    cell = 80;
+    direction = 7;
+    OK (! inside (cell, direction), (*test), "%d %d is not inside", cell, direction);
 }
 
 int main ()
 {
-    // Test counter.
+    // Test directioner.
     int test;
     test = 0;
 
-    test_xo_yo_to_count (& test);
+    test_xo_yo_to_direction (& test);
     test_x_y_to_entry (& test);
     test_inside (& test);
     // Print the test plan.

@@ -4,17 +4,19 @@
 #include "ppport.h"
 
 #include "similar-image.h"
-#include "image-similar-perl.c"
 
-#define SIMAGE_CALL(x) {\
-simage_status_t status;\
-status = x;\
-if (status != simage_ok) {\
-croak ("error %d from similar-image library", status);\
-}\
-}
+#define SIMAGE_CALL(x) {						\
+	simage_status_t status;						\
+	status = x;							\
+	if (status != simage_ok) {					\
+	    croak ("error %d from similar-image library", status);	\
+	}								\
+    }
 
 typedef simage_t * Image__Similar__Image;
+
+/* This defines "Image::Similar::Image", which is a part of an
+   Image::Similar object, labelled like $is->{image}. */
 
 MODULE=Image::Similar PACKAGE=Image::Similar::Image
 
@@ -66,6 +68,20 @@ fill_grid (image)
 	Image::Similar::Image image
 CODE:
 	SIMAGE_CALL (simage_fill_grid (image));
+
+Image::Similar::Image
+fill_from_sig (sig)
+	SV * sig;
+PREINIT:
+	char * signature;
+	STRLEN signature_length;
+CODE:
+	Newxz (RETVAL, 1, simage_t);
+	signature = SvPV (sig, signature_length);
+	SIMAGE_CALL (simage_fill_from_signature (RETVAL, signature,
+						 (int) signature_length));
+OUTPUT:
+	RETVAL
 
 double
 image_diff (image1, image2)

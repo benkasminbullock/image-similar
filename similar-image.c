@@ -9,16 +9,16 @@
 
 #ifdef HEADER
 
+#define SIZE 9
+#define DIRECTIONS 8
+
 /* A point in the grid. */
 
 typedef struct point {
     double average_grey_level;
-    int d[8];
+    int d[DIRECTIONS];
 }
 point_t;
-
-#define SIZE 9
-#define DIRECTIONS 8
 
 typedef struct simage {
     /* The width of the image in pixels. */
@@ -39,6 +39,8 @@ typedef struct simage {
        data, or a false value if not. This may be false if we just
        loaded a signature rather than the image. */
     unsigned int valid_image : 1;
+/* The grid is already filled. */
+    unsigned int grid_filled : 1;
 }
 simage_t;
 
@@ -49,6 +51,8 @@ typedef enum {
     /* x or y is outside the image dimensions. */
     simage_status_bounds,
     simage_status_bad_image,
+    /* Some upstream program did a stupid thing. */
+    simage_status_bad_logic,
 }
 simage_status_t;
 
@@ -238,33 +242,33 @@ simage_fill_entries (simage_t * s)
 /* Given offsets xo and yo, return the array offset for the difference
    array which corresponds to that. */
 
-int xo_yo_to_count (int xo, int yo)
+int xo_yo_to_direction (int xo, int yo)
 {
-    int count;
+    int direction;
     if (xo <= 0 && yo <= 0) {
-	count = (xo + 1) + 3 * (yo + 1);
+	direction = (xo + 1) + 3 * (yo + 1);
     }
     else {
 	// Adjust for not having a centre square, so +1, +1 is 7, not 8.
-	count = (xo + 1) + 3 * (yo + 1) - 1;
+	direction = (xo + 1) + 3 * (yo + 1) - 1;
     }
-    return count;
+    return direction;
 }
 
 simage_status_t
-count_to_xo_yo (int count, int * xo, int * yo)
+direction_to_xo_yo (int direction, int * xo, int * yo)
 {
-    if (count < 3) {
+    if (direction < 3) {
 	* yo = -1;
-	* xo = count - 1;
+	* xo = direction - 1;
 	return simage_ok;
     }
-    if (count < 5) {
+    if (direction < 5) {
 	* yo = 0;
-	if (count == 3) {
+	if (direction == 3) {
 	    * xo = -1;
 	}
-	else if (count == 4) {
+	else if (direction == 4) {
 	    * xo = 1;
 	}
 	else {
@@ -272,13 +276,13 @@ count_to_xo_yo (int count, int * xo, int * yo)
 	}
 	return simage_ok;
     }
-    if (count < DIRECTIONS) {
+    if (direction < DIRECTIONS) {
 	* yo = 1;
-	* xo = count - 6;
+	* xo = direction - 6;
 	return simage_ok;
     }
-    fprintf (stderr, "%s:%d: count %d >= DIRECTIONS %d.\n",
-	     __FILE__, __LINE__, count, DIRECTIONS);
+    fprintf (stderr, "%s:%d: direction %d >= DIRECTIONS %d.\n",
+	     __FILE__, __LINE__, direction, DIRECTIONS);
     return simage_status_bounds;
 }
 
@@ -331,7 +335,7 @@ simage_make_point_diffs (simage_t * s, int x, int y)
     for (xo = -1; xo <= 1; xo++) {
 	for (yo = -1; yo <= 1; yo++) {
 	    int thatentry;
-	    int count;
+	    int direction;
 	    int thatgrey;
 	    if (xo == 0 && yo == 0) {
 		// Skip the middle square, since this would be the
@@ -346,13 +350,25 @@ simage_make_point_diffs (simage_t * s, int x, int y)
 	    }
 	    // Get the grey level of the other point
 	    thatgrey = s->grid[thatentry].average_grey_level;
-	    // turn xo, yo into an array offset "count".
-	    count = xo_yo_to_count (xo, yo);
-	    // Put the difference into d[count] of the current point.
-	    thispoint->d[count] = diff (thisgrey, thatgrey);
-	    //	    fprintf (stderr, "# %d %d %d\n", thisentry, count, thispoint->d[count]);
+	    // turn xo, yo into an array offset "direction".
+	    direction = xo_yo_to_direction (xo, yo);
+	    // Put the difference into d[direction] of the current point.
+	    thispoint->d[direction] = diff (thisgrey, thatgrey);
+	    //	    fprintf (stderr, "# %d %d %d\n", thisentry, direction, thispoint->d[direction]);
 	}
     }
+    return simage_ok;
+}
+
+simage_status_t
+entry_to_x_y (int entry, int * x_ptr, int * y_ptr)
+{
+    int x;
+    int y;
+    x = entry % SIZE;
+    y = entry / SIZE;
+    * x_ptr = x;
+    * y_ptr = y;
     return simage_ok;
 }
 
@@ -365,8 +381,7 @@ simage_make_differences (simage_t * s)
     for (cell = 0; cell < SIZE * SIZE; cell++) {
 	int x;
 	int y;
-	x = cell % SIZE;
-	y = cell / SIZE;
+	CALL (entry_to_x_y (cell, & x, & y));
 	CALL (simage_make_point_diffs (s, x, y));
     }
     return simage_ok;
@@ -393,9 +408,15 @@ simage_check_image (simage_t * s)
 simage_status_t
 simage_fill_grid (simage_t * s)
 {
+    if (s->grid_filled) {
+	fprintf (stderr, "%s:%d: double call to fill_grid.\n",
+		 __FILE__, __LINE__);
+	return simage_status_bad_logic;
+    }
     CALL (simage_check_image (s));
     CALL (simage_fill_entries (s));
     CALL (simage_make_differences (s));
+    s->grid_filled = 1;
     return simage_ok;
 }
 
@@ -432,8 +453,8 @@ simage_diff (simage_t * s1, simage_t * s2, double * total_diff)
     return simage_ok;
 }
 
-	    /* Check whether this direction and cell point to another
-	       cell or are outside the image. */
+/* Check whether this direction and cell point to another
+   cell or are outside the image. */
 
 int inside (int cell, int direction)
 {
@@ -444,7 +465,7 @@ int inside (int cell, int direction)
     int nextcell;
     x = cell % SIZE;
     y = cell / SIZE;
-    count_to_xo_yo (direction, & xo, & yo);
+    direction_to_xo_yo (direction, & xo, & yo);
     nextcell = x_y_to_entry (x + xo, y + yo);
     if (nextcell == OUTSIDE) {
 	return 0;
@@ -478,7 +499,7 @@ simage_signature (simage_t * s, char ** signature_ptr, int * signature_length)
 			     __FILE__, __LINE__, value, cell, direction);
 		    return simage_status_bounds;
 		}
-		signature[cell * DIRECTIONS + direction] = (char) value;
+		signature[sl] = (char) value;
 		sl++;
 	    }
 	}
@@ -495,3 +516,38 @@ simage_status_t simage_free_signature (char * signature)
     return simage_ok;
 }
 
+
+simage_status_t
+simage_fill_from_signature (simage_t * image, char * signature, int signature_length)
+{
+    // Cell number
+    int c;
+    // Offset into signature.
+    int o;
+    o = 0;
+    for (c = 0; c < SIZE * SIZE; c++) {
+	/* The direction. */
+	int d;
+	int x;
+	int y;
+	CALL (entry_to_x_y (c, & x, & y));
+	for (d = 0; d < DIRECTIONS; d++) {
+	    if (inside (c, d)) {
+		//printf ("%d %d %d\n", c, d, o);
+		/* The value of this cell. */
+		int value;
+		if (o >= signature_length) {
+		    fprintf (stderr, "%s:%d: offset %d exceeded signature length %d.\n",
+			     __FILE__, __LINE__, o, signature_length);
+		    continue;
+		    o++;
+//		    return simage_status_bounds;
+		}
+		value = signature[o] - '0' - 2;
+		o++;
+		image->grid[c].d[d] = value;
+	    }
+	}
+    }
+    return simage_ok;
+}
