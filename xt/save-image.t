@@ -25,7 +25,6 @@ if (-f $chessout) {
 my $img = Imager->new ();
 $img->read (file => $file);
 my $is = load_image ($img);
-$is->fill_grid ();
 $is->write_png ($chessout);
 
 my $lenafile = "$Bin/lena-gercke.jpg";

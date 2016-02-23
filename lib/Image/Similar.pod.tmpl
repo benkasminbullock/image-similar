@@ -168,7 +168,12 @@ called Image::Similar::Image.
 
     fill_grid ($img);
 
-Calculate the image's signature and store it within C<$img>.
+Calculate the image's signature and store it within C<$img>. This
+method is called automatically by L</load_image>, and it does not need
+to be called by L</load_signature>, which overrides it with values
+from the signature, so it should only be used when calling L</new>,
+filling the pixels by the user, and then making the signature "by
+hand" rather than via L</load_image>.
 
 =head3 image_diff
 
