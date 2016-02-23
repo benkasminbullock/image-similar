@@ -18,11 +18,15 @@ use Image::Similar 'load_image';
 use Imager;
 use Image::PNG::Libpng '0.42', ':all';
 my $file = "$Bin/../t/images/chess/chess-300.png";
+my $chessout = "$Bin/chess-300.png";
+if (-f $chessout) {
+    unlink $chessout or die $!;
+}
 my $img = Imager->new ();
 $img->read (file => $file);
 my $is = load_image ($img);
 $is->fill_grid ();
-$is->write_png ("$Bin/chess-300.png");
+$is->write_png ($chessout);
 
 my $lenafile = "$Bin/lena-gercke.jpg";
 my $imagerlenapng = "$Bin/imager-lena-grey.png";
@@ -36,3 +40,6 @@ $islena->write_png ($islenapng);
 ok (png_compare ($islenapng, $imagerlenapng) == 0, "images have the same data");
 unlink $islenapng, $imagerlenapng;
 done_testing ();
+if (-f $chessout) {
+    unlink $chessout or die $!;
+}

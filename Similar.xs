@@ -88,3 +88,17 @@ CODE:
 	simage_free_signature (signature);
 OUTPUT:
 	RETVAL
+
+SV *
+valid_image (image)
+	Image::Similar::Image image
+CODE:
+	if (image->valid_image) {
+		RETVAL = & PL_sv_yes;
+	}
+	else {
+		RETVAL = & PL_sv_no;
+	}
+OUTPUT:
+	RETVAL
+

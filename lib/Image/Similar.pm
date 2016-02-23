@@ -1,20 +1,19 @@
 package Image::Similar;
 use warnings;
 use strict;
-require Exporter;
 use base 'Exporter';
 our @EXPORT_OK = qw/
 		       load_image
 		   /;
-%EXPORT_TAGS = (
+our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
-use Image::PNG::Libpng ':all';
-use Image::PNG::Const;
+use Image::PNG::Libpng;
+use Image::PNG::Const ':all';
 use Scalar::Util 'looks_like_number';
 use Carp;
 
-use constant (
+use constant {
     # Constants used for combining red, green, and blue values. These
     # values are taken from the L<Imager> source code.
     red => 0.222,
@@ -23,21 +22,16 @@ use constant (
     # bytes per pixel for rgb
     rgb_bytes => 3,
     # bytes per pixel for rgba
-    rgb_bytes => 4,
+    rgba_bytes => 4,
     # Maximum possible grey pixel
     maxgreypixel => 255,
+    # For "round".
     half => 0.5,
-);
+};
 
 our $VERSION = '0.03';
 require XSLoader;
 XSLoader::load ('Image::Similar', $VERSION);
-
-# Remember children: We Must Never Include "round" In The Perl Core
-# Modules, because that would be convenient and useful and we would
-# not be able to behave like a bunch of stupid, passive-aggressive
-# dipshits by pointing people to the insane drivel in perlfaq, but
-# just have a simple solution that actually works.
 
 sub round
 {
@@ -61,9 +55,9 @@ sub new
 	    return;
 	}
     }
-#    print "$is->{height} $is->{width}\n";
+    #    print "$is->{height} $is->{width}\n";
     $is->{image} = Image::Similar::Image::isnew ($is->{width}, $is->{height});
-#    print "Finished isnew with $is->{image}\n";
+    #    print "Finished isnew with $is->{image}\n";
     bless $is, $class;
     return $is;
 }
@@ -88,16 +82,16 @@ sub load_image_imager
     my $width = $grey->getwidth ();
     my $is = Image::Similar->new (height => $height, width => $width);
     for my $y (0..$height - 1) {
-#	print "$y\n";
+	#	print "$y\n";
 	my @scanline = $grey->getscanline (y => $y);
 	for my $x (0..$width - 1) {
 	    # Dunno a better way to do this, please shout if you do.
 	    my ($greypixel, undef, undef, undef) = $scanline[$x]->rgba ();
-	    if ($greypixel < 0 || $grey > maxgreypixel) {
+	    if ($greypixel < 0 || $greypixel > maxgreypixel) {
 		carp "Pixel value $greypixel at $x, $y is not allowed, need 0-255 here";
 		next;
 	    }
-#	    print "x, y, grey = $x $y $greypixel\n";
+	    #	    print "x, y, grey = $x $y $greypixel\n";
 	    $is->{image}->set_pixel ($x, $y, $greypixel);
 	}
     }
@@ -129,7 +123,7 @@ sub load_image_imager
 sub load_image_libpng
 {
     my ($image) = @_;
-#    load_libpng () or return;
+    #    load_libpng () or return;
     my $ihdr = $image->get_IHDR ();
     my $height = $ihdr->{height};
     my $width = $ihdr->{width};
@@ -200,23 +194,38 @@ sub load_image
     return undef;
 }
 
-sub write_png
+sub load_sig
+{
+my ($sig) = @_;
+}
+
+sub sig_diff
+{
+my ($image, $sig) = @_;
+}
+
+sub Image::Similar::write_png
 {
     my ($is, $filename) = @_;
-#    load_libpng () or return;
-    my $png = Image::PNG::Libpng::create_write_struct ();
-    $png->set_IHDR ({
-	height => $is->{height},
-	width => $is->{width},
-	bit_depth => 8,
-	color_type => 0,     # Image::PNG::Const::PNG_COLOR_TYPE_GRAY,
-    });
-    my $rows = $is->{image}->get_rows ();
-    if (scalar (@{$rows}) != $is->{height}) {
-	die "Error: bad numbers: $is->{height} != " . scalar (@{$rows});
+    if ($is->{image}->valid_image ()) {
+	#    load_libpng () or return;
+	my $png = Image::PNG::Libpng::create_write_struct ();
+	$png->set_IHDR ({
+	    height => $is->{height},
+	    width => $is->{width},
+	    bit_depth => 8,
+	    color_type => 0, # Image::PNG::Const::PNG_COLOR_TYPE_GRAY,
+	});
+	my $rows = $is->{image}->get_rows ();
+	if (scalar (@{$rows}) != $is->{height}) {
+	    die "Error: bad numbers: $is->{height} != " . scalar (@{$rows});
+	}
+	$png->set_rows ($rows);
+	$png->write_png_file ($filename);
     }
-    $png->set_rows ($rows);
-    $png->write_png_file ($filename);
+    else {
+	carp 'This object does not contain valid image data';
+    }
     return;
 }
 

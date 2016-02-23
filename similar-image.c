@@ -31,8 +31,14 @@ typedef struct simage {
     unsigned int p;
     /* The grid of values. */
     point_t grid[SIZE*SIZE];
+    /* width / (SIZE + 1) */
     double w10;
+    /* height / (SIZE + 1) */
     double h10;
+    /* This contains a true value if we have actually loaded image
+       data, or a false value if not. This may be false if we just
+       loaded a signature rather than the image. */
+    unsigned int valid_image : 1;
 }
 simage_t;
 
@@ -131,7 +137,11 @@ simage_init (simage_t * s, unsigned int width, unsigned int height)
     if (p > s->p) {
 	s->p = p;
     }
-    //    simage_dump (s);
+    //    simage_dump (s); 
+
+    // This contains a valid image data, although it is just black
+    // pixels at the moment.
+    s->valid_image = 1;
     return simage_ok;
 }
 

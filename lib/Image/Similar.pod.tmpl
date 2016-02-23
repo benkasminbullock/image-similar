@@ -178,6 +178,14 @@ containing strings of bytes, one byte per pixel.
 
     my $sig = $image->signature ();
 
+=head3 valid_image
+
+    if ($image->valid_image ()) {
+	# do something with image data
+    }
+
+This returns a true value only if C<$image> contains valid image data.
+
 =head1 KNOWN PROBLEMS
 
 =head2 Unimplemented parts of the original algorithm
