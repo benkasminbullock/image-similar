@@ -33,6 +33,12 @@ our $VERSION = '0.03';
 require XSLoader;
 XSLoader::load ('Image::Similar', $VERSION);
 
+# Remember children: We Must Never Include "round" In The Perl Core
+# Modules, because that would be convenient and useful and we would
+# not be able to behave like a bunch of stupid, passive-aggressive
+# dipshits by pointing people to the insane drivel in perlfaq, but
+# just have a simple solution that actually works.
+
 sub round
 {
     my ($float) = @_;
@@ -141,7 +147,7 @@ sub load_image_libpng
     }
     elsif ($ihdr->{color_type} == PNG_COLOR_TYPE_GRAY_ALPHA) {
 	# GRAY_ALPHA
-	carp "Discarding alpha channel and ignoring background";
+	carp 'Discarding alpha channel and ignoring background';
 	for my $y (0..$height-1) {
 	    for my $x (0..$width-1) {
 		my $grey = ord (substr ($rows->[$y], $x * 2, 1));
@@ -159,7 +165,7 @@ sub load_image_libpng
 	    $offset = rgba_bytes;
 	    # We should try to use the alpha channel to blend in a
 	    # background colour here, but we don't.
-	    carp "Discarding alpha channel and ignoring background";
+	    carp 'Discarding alpha channel and ignoring background';
 	}
 	for my $y (0..$height-1) {
 	    for my $x (0..$width-1) {
@@ -168,9 +174,6 @@ sub load_image_libpng
 		my $b = ord (substr ($rows->[$y], $x * $offset + 2, 1));
 		# https://metacpan.org/pod/distribution/Imager/lib/Imager/Transformations.pod
 		my $grey = red * $r + green * $g + blue * $b;
-		# We Must Never Include "round" In The Perl Core
-		# because that would be convenient and useful and we would not
-		# stupid, passive-aggressive, perlfaq drivel.
 		$grey = round ($grey);
 		$is->{image}->set_pixel ($x, $y, $grey);
 	    }

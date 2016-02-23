@@ -9,3 +9,14 @@ severity = 1
 [-ValuesAndExpressions::ProhibitConstantPragma]
 # We are using git, not RCS, so these keywords are unnecessary.
 [-Miscellanea::RequireRcsKeywords]
+# It is too much work to try to figure out perltidy configuration.
+[-CodeLayout::RequireTidyCode]
+# This policy doesn't make a shred of sense to me, just a busy-work thing.
+[-CodeLayout::ProhibitParensWithBuiltins]
+# Since there are no sigils, and we always use parentheses with all
+# functions, including builtins, we don't need to capitalize
+# constants.
+[-NamingConventions::Capitalization]
+# Local variables:
+# mode: conf
+# End:
