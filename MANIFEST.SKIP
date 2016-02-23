@@ -37,3 +37,4 @@ MYMETA..*
 # File for making images
 t/images/chess/make-chessboards\.pl$
 t/images/lenagercke/.*
+^examples/.*-out\.txt$

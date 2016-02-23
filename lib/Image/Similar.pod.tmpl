@@ -37,6 +37,11 @@ Image::Similar currently supports GRAY, GRAY_ALPHA, RGB, and RGBA
 C<Image::PNG::Libpng> image types, but not paletted image types. It
 only supports bit depths of eight.
 
+RGB images are combined to greyscale using constants taken from the
+source code of L<Imager>. As of this version, there is no handling of
+the alpha channel (transparent pixels) and the background value is
+ignored.
+
 =back
 
 Use L</load_image> to load the image.
@@ -75,6 +80,27 @@ This returns a floating-point number which is the difference between
 images C<$is1> and C<$is2>. This is meant to be approximately the same
 value as given by L<Image::Libpuzzle/vector_euclidean_length()>, but
 no validation has been carried out yet.
+
+=head2 signature
+
+    my $sig = $is->signature ();
+
+Get the signature of the image. This is currently a text string
+consisting of digits 0-4 which identifies the image. This is liable to
+change with future versions of the module.
+
+=head2 sig_diff
+
+    my $diff = $is->sig_diff ($sig);
+
+Get the difference between C<$sig> and the image represented by
+C<$is>.
+
+=head2 load_signature
+
+    my $is = load_signature ($sig);
+
+Load C<$is>, an Image::Similar object, from C<$sig>.
 
 =head1 TESTING AND INTERNAL METHODS
 
@@ -116,12 +142,6 @@ version. See L</write_png> for details.
 
 This loads an image from the return value of
 L<Image::PNG::Libpng/read_png_file>.
-
-=head2 signature
-
-    my $sig = $is->signature ();
-
-Get the signature of the image.
 
 =head2 INTERNAL Image::Similar::Image METHODS
 

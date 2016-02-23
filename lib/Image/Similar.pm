@@ -1,19 +1,43 @@
 package Image::Similar;
+use warnings;
+use strict;
 require Exporter;
-@ISA = qw(Exporter);
-@EXPORT_OK = qw/
-		   load_image
-	       /;
+use base 'Exporter';
+our @EXPORT_OK = qw/
+		       load_image
+		   /;
 %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
-use warnings;
-use strict;
+use Image::PNG::Libpng ':all';
+use Image::PNG::Const;
+use Scalar::Util 'looks_like_number';
 use Carp;
-our $VERSION = '0.02';
+
+use constant (
+    # Constants used for combining red, green, and blue values. These
+    # values are taken from the L<Imager> source code.
+    red => 0.222,
+    green => 0.707,
+    blue => 0.071,
+    # bytes per pixel for rgb
+    rgb_bytes => 3,
+    # bytes per pixel for rgba
+    rgb_bytes => 4,
+    # Maximum possible grey pixel
+    maxgreypixel => 255,
+    half => 0.5,
+);
+
+our $VERSION = '0.03';
 require XSLoader;
 XSLoader::load ('Image::Similar', $VERSION);
-use Scalar::Util 'looks_like_number';
+
+sub round
+{
+    my ($float) = @_;
+    return int ($float + half);
+}
 
 sub new
 {
@@ -42,6 +66,7 @@ sub fill_grid
 {
     my ($s) = @_;
     $s->{image}->fill_grid ();
+    return;
 }
 
 # Load an image assuming it's from Imager.
@@ -59,37 +84,53 @@ sub load_image_imager
     for my $y (0..$height - 1) {
 #	print "$y\n";
 	my @scanline = $grey->getscanline (y => $y);
-	for my $x (0..$width -1) {
+	for my $x (0..$width - 1) {
 	    # Dunno a better way to do this, please shout if you do.
-	    my ($grey, undef, undef, undef) = $scanline[$x]->rgba ();
-	    if ($grey < 0 || $grey > 255) {
-		carp "Pixel value $grey at $x, $y is not allowed, need 0-255 here";
+	    my ($greypixel, undef, undef, undef) = $scanline[$x]->rgba ();
+	    if ($greypixel < 0 || $grey > maxgreypixel) {
+		carp "Pixel value $greypixel at $x, $y is not allowed, need 0-255 here";
 		next;
 	    }
-#	    print "x, y, grey = $x $y $grey\n";
-	    $is->{image}->set_pixel ($x, $y, $grey);
+#	    print "x, y, grey = $x $y $greypixel\n";
+	    $is->{image}->set_pixel ($x, $y, $greypixel);
 	}
     }
     $is->fill_grid ();
     return $is;
 }
 
+# # C<$libpng_ok> is set to a true value if Image::PNG::Libpng has
+# # already successfully been loaded.
+
+# my $libpng_ok;
+
+# # Load Image::PNG::Libpng.
+
+# sub load_libpng
+# {
+#     if ($libpng_ok) {
+# 	return 1;
+#     }
+#     my $use_ok = eval "use Image::PNG::Libpng;";
+#     if (! $use_ok || $@) {
+# 	carp "Error loading Image::PNG::Libpng: $@";
+# 	return;
+#     }
+#     $libpng_ok = 1;
+#     return 1;
+# }
+
 sub load_image_libpng
 {
-    eval "use Image::PNG::Libpng;";
-    if ($@) {
-	carp "Error loading Image::PNG::Libpng: $@";
-	return undef;
-    }
     my ($image) = @_;
-#    print "Loading $image\n";
+#    load_libpng () or return;
     my $ihdr = $image->get_IHDR ();
     my $height = $ihdr->{height};
-my $width = $ihdr->{width};
+    my $width = $ihdr->{width};
     my $is = Image::Similar->new (height => $height,
 				  width => $width);
     my $rows = $image->get_rows ();
-    if ($ihdr->{color_type} == 0) {
+    if ($ihdr->{color_type} == PNG_COLOR_TYPE_GRAY) {
 	# GRAY
 	for my $y (0..$height-1) {
 	    for my $x (0..$width-1) {
@@ -98,7 +139,7 @@ my $width = $ihdr->{width};
 	    }
 	}
     }
-    elsif ($ihdr->{color_type} = 4) {
+    elsif ($ihdr->{color_type} == PNG_COLOR_TYPE_GRAY_ALPHA) {
 	# GRAY_ALPHA
 	carp "Discarding alpha channel and ignoring background";
 	for my $y (0..$height-1) {
@@ -108,11 +149,16 @@ my $width = $ihdr->{width};
 	    }
 	}
     }
-    elsif ($ihdr->{color_type} = 2 || $ihdr->{color_type} == 6) {
+    elsif ($ihdr->{color_type} == PNG_COLOR_TYPE_RGB ||
+	   $ihdr->{color_type} == PNG_COLOR_TYPE_RGB_ALPHA) {
 	# RGB or RGBA
-	my $offset = 3;
-	if ($ihdr->{color_type} == 6) {
-	    $offset = 4;
+
+	# $offset is the number of bytes per pixel.
+	my $offset = rgb_bytes;
+	if ($ihdr->{color_type} == PNG_COLOR_TYPE_RGB_ALPHA) {
+	    $offset = rgba_bytes;
+	    # We should try to use the alpha channel to blend in a
+	    # background colour here, but we don't.
 	    carp "Discarding alpha channel and ignoring background";
 	}
 	for my $y (0..$height-1) {
@@ -121,8 +167,11 @@ my $width = $ihdr->{width};
 		my $g = ord (substr ($rows->[$y], $x * $offset + 1, 1));
 		my $b = ord (substr ($rows->[$y], $x * $offset + 2, 1));
 		# https://metacpan.org/pod/distribution/Imager/lib/Imager/Transformations.pod
-		my $grey = 0.222 * $r + 0.707 * $g + 0.071 * $b;
-		$grey = int ($grey + 0.5);
+		my $grey = red * $r + green * $g + blue * $b;
+		# We Must Never Include "round" In The Perl Core
+		# because that would be convenient and useful and we would not
+		# stupid, passive-aggressive, perlfaq drivel.
+		$grey = round ($grey);
 		$is->{image}->set_pixel ($x, $y, $grey);
 	    }
 	}
@@ -151,11 +200,7 @@ sub load_image
 sub write_png
 {
     my ($is, $filename) = @_;
-    eval "use Image::PNG::Libpng;";
-    if ($@) {
-	carp "write_png requires you to install Image::PNG::Libpng";
-	return;
-    }
+#    load_libpng () or return;
     my $png = Image::PNG::Libpng::create_write_struct ();
     $png->set_IHDR ({
 	height => $is->{height},
@@ -164,11 +209,12 @@ sub write_png
 	color_type => 0,     # Image::PNG::Const::PNG_COLOR_TYPE_GRAY,
     });
     my $rows = $is->{image}->get_rows ();
-    if (scalar (@$rows) != $is->{height}) {
-	die "Error: bad numbers: $is->{height} != " . scalar (@$rows);
+    if (scalar (@{$rows}) != $is->{height}) {
+	die "Error: bad numbers: $is->{height} != " . scalar (@{$rows});
     }
     $png->set_rows ($rows);
     $png->write_png_file ($filename);
+    return;
 }
 
 sub diff
@@ -180,7 +226,7 @@ sub diff
 sub signature
 {
     my ($s) = @_;
-return $s->{image}->signature ();
+    return $s->{image}->signature ();
 }
 
 1;

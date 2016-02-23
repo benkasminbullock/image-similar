@@ -15,6 +15,7 @@ WriteMakefile (
     LICENSE => 'perl',
     PREREQ_PM => {
 	'Scalar::Util' => '0',
+	'Image::PNG::Libpng' => '0.42',
     },
     META_MERGE => {
 	'meta-spec' => {
