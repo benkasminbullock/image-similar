@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdarg.h>
 #include "similar-image.h"
 
 #ifdef HEADER
@@ -20,6 +21,8 @@ typedef struct point {
 }
 point_t;
 
+typedef int (*simage_error_channel_t) (void * s, const char * format, ...);
+
 typedef struct simage {
     /* The width of the image in pixels. */
     unsigned int width;
@@ -27,6 +30,10 @@ typedef struct simage {
     unsigned int height;
     /* The image data. */
     unsigned char * data;
+    /* The computed signature. */
+    char * signature;
+    /* The length of the signature. */
+    int signature_length;
     /* The P-value for this image, see equation in article. */
     unsigned int p;
     /* The grid of values. */
@@ -35,11 +42,15 @@ typedef struct simage {
     double w10;
     /* height / (SIZE + 1) */
     double h10;
+    /* The number of times malloc/calloc were called related to this
+       object. */
+    int nmallocs;
+    simage_error_channel_t error_channel;
     /* This contains a true value if we have actually loaded image
        data, or a false value if not. This may be false if we just
        loaded a signature rather than the image. */
     unsigned int valid_image : 1;
-/* The grid is already filled. */
+    /* The grid is already filled. */
     unsigned int grid_filled : 1;
 }
 simage_t;
@@ -47,12 +58,16 @@ simage_t;
 typedef enum {
     simage_ok,
     /* malloc failed. */
-    simage_memory_failure,
+    simage_status_memory_failure,
     /* x or y is outside the image dimensions. */
     simage_status_bounds,
     simage_status_bad_image,
     /* Some upstream program did a stupid thing. */
     simage_status_bad_logic,
+    /* */
+    simage_status_free_underflow,
+    /* */
+    simage_status_memory_leak,
 }
 simage_status_t;
 
@@ -67,24 +82,50 @@ comparison_t;
 
 #endif /* def HEADER */
 
-#define CALL(x) {					\
-	simage_status_t status;				\
-	status = x;					\
-	if (status != simage_ok) {			\
-	    fprintf (stderr, "%s:%d: error %d\n",	\
-		     __FILE__, __LINE__, status);	\
-	    return status;				\
-	}						\
+#define FAIL(test,status,message,...) {					\
+	if (test) {							\
+	    if (s->error_channel) {					\
+		(*s->error_channel) (s, "%s:%d: ", __FILE__, __LINE__);	\
+		(*s->error_channel) (s, message, ## __VA_ARGS__);	\
+		(*s->error_channel) (s, "\n");				\
+	    }								\
+	    return simage_status_ ## status;				\
+	}								\
     }
 
-#define CHECK_XY(s,x,y) {			\
-	if (x > s->width || x < 0) {		\
-	    return simage_status_bounds;	\
-	}					\
-	if (y > s->height || y < 0) {		\
-	    return simage_status_bounds;	\
-	}					\
+#define CALL(x) {							\
+	simage_status_t status;						\
+	status = x;							\
+	if (status != simage_ok) {					\
+	    if (s->error_channel) {					\
+		(*s->error_channel) (s, "%s:%d: ", __FILE__, __LINE__);	\
+		(*s->error_channel) (s, "%s failed with status %d",	\
+				     #x, status);			\
+		(*s->error_channel) (s, "\n");				\
+	    }								\
+	    return status;						\
+	}								\
     }
+
+#define CHECK_XY(s,x,y) {					\
+	FAIL (x > s->width || x < 0, bounds,			\
+	      "x coordinate %d is outside the image", x);	\
+	FAIL (y > s->height || y < 0, bounds,			\
+	      "y coordinate %d is outside the image", y);	\
+    }
+
+/* Default place to print errors, if the user doesn't override this. */
+
+static int
+simage_default_error_channel (void * vs, const char * message, ...)
+{
+    va_list va;
+    int chars;
+    va_start (va, message);
+    chars = vfprintf (stderr, message, va);
+    va_end (va);
+    return chars;
+}
 
 #define OUTSIDE -1
 
@@ -126,13 +167,13 @@ simage_init (simage_t * s, unsigned int width, unsigned int height)
     unsigned int p;
     /* The minimum of the width and the height. */
     unsigned int min_w_h;
+
     s->data = calloc (width * height, sizeof (unsigned char));
-    if (! s->data) {
-	return simage_memory_failure;
-    }
+    CALL (simage_inc_nmallocs (s, s->data));
     s->height = height;
     s->width = width;
     s->p = 2;
+    s->error_channel = & simage_default_error_channel;
     min_w_h = width;
     if (height < min_w_h) {
 	min_w_h = height;
@@ -150,13 +191,45 @@ simage_init (simage_t * s, unsigned int width, unsigned int height)
 }
 
 simage_status_t
+simage_inc_nmallocs (simage_t * s, void * signature)
+{
+    FAIL (! signature, memory_failure, "Out of memory");
+    s->nmallocs++;
+    return simage_ok;
+}
+
+simage_status_t
+simage_dec_nmallocs (simage_t * s)
+{
+    s->nmallocs--;
+    FAIL (s->nmallocs < 0, free_underflow,
+	  "too many frees, %d should be 0.\n",
+	  s->nmallocs);
+    return simage_ok;
+}
+
+/* Free all the memory associated with "s", except for "s" itself,
+   which is allocated by the user. */
+
+simage_status_t
 simage_free (simage_t * s)
 {
     if (s->data) {
 	free (s->data);
+	s->data = 0;
+	CALL (simage_dec_nmallocs (s));
     }
+    if (s->signature) {
+	free (s->signature);
+	s->signature = 0;
+	CALL (simage_dec_nmallocs (s));
+    }
+    FAIL (s->nmallocs != 0, memory_leak,
+	  "memory leak: %d should be 0.", s->nmallocs);
     return simage_ok;
 }
+
+/* Set the pixel at "x", "y" to the value "grey". */
 
 simage_status_t
 simage_set_pixel (simage_t * s, int x, int y, unsigned char grey)
@@ -165,6 +238,10 @@ simage_set_pixel (simage_t * s, int x, int y, unsigned char grey)
     s->data[y * s->width + x] = grey;
     return simage_ok;
 }
+
+/* Compute the average intensity of the grid square at the coordinates
+   "i", "j" on the grid. This assumes that "s->w10" and "s->h10" have
+   already been computed. */
 
 simage_status_t
 simage_fill_entry (simage_t * s, int i, int j)
@@ -189,29 +266,22 @@ simage_fill_entry (simage_t * s, int i, int j)
     y_max = round (yd + s->p / 2.0);
     total = 0.0;
     for (py = y_min; py <= y_max; py++) {
-	if (py < 0 || py >= s->height) {
-	    fprintf (stderr, "overflow %d\n", py);
-	}
+	FAIL (py < 0 || py >= s->height, bounds,
+	      "overflow py=%d for i, j = (%d, %d)\n", py, i, j);
 	for (px = x_min; px <= x_max; px++) {
-	    if (px < 0 || px >= s->width) {
-		fprintf (stderr, "overflow %d\n", px);
-	    }
+	    FAIL (px < 0 || px >= s->width, bounds,
+		  "overflow px=%d for i, j = (%d, %d)\n", px, i, j);
 	    total += s->data[py * s->width + px];
 	}
     }
     size = (x_max - x_min + 1) * (y_max - y_min + 1);
     grey = (int) round (total / ((double) size));
-    if (grey < 0 || grey >= 256) {
-	fprintf (stderr, "%s:%d: bad average grey value %d.\n",
-		 __FILE__, __LINE__, grey);
-	return simage_status_bounds;
-    }
+    FAIL (grey < 0 || grey >= 256, bounds,
+	  "bad average grey value %d.", grey);
     entry = x_y_to_entry (i, j);
-    if (entry == OUTSIDE) {
-	fprintf (stderr, "%s:%d: bounds error with %d %d -> %d\n",
-		 __FILE__, __LINE__, i, j, entry);
-	return simage_status_bounds;
-    }
+    FAIL (entry == OUTSIDE, bounds,
+	  "bounds error with %d %d -> %d\n",
+	  i, j, entry);
     s->grid[entry].average_grey_level = grey;
     return simage_ok;
 }
@@ -224,11 +294,9 @@ simage_fill_entries (simage_t * s)
 {
     int i;
     int j;
-    if (s->width == 0 || s->height == 0) {
-	fprintf (stderr, "%s:%d: empty image w/h %d/%d.\n",
-		 __FILE__, __LINE__, s->width, s->height);
-	return simage_status_bad_image;
-    }
+    FAIL (s->width == 0 || s->height == 0, bad_image,
+	  "empty image w/h %d/%d.\n",
+	  s->width, s->height);
     s->w10 = ((double) s->width) / ((double) (SIZE + 1));
     s->h10 = ((double) s->height) / ((double) (SIZE + 1));
     for (i = 0; i < SIZE; i++) {
@@ -325,11 +393,8 @@ simage_make_point_diffs (simage_t * s, int x, int y)
     thisentry = x_y_to_entry (x, y);
     /* Make 100% sure that we don't try to access outside the "grid" array
        within "s". */
-    if (thisentry == OUTSIDE) {
-	fprintf (stderr, "%s:%d: entry outside grid %d %d %d\n",
-		 __FILE__, __LINE__, x, y, thisentry);
-	return simage_status_bounds;
-    }
+    FAIL (thisentry == OUTSIDE, bounds, "entry outside grid %d %d %d\n",
+	  x, y, thisentry);
     thispoint = & s->grid[thisentry];
     thisgrey = thispoint->average_grey_level;
     for (xo = -1; xo <= 1; xo++) {
@@ -392,27 +457,20 @@ simage_make_differences (simage_t * s)
 simage_status_t
 simage_check_image (simage_t * s)
 {
-    if (s->width == 0 || s->height == 0) {
-	fprintf (stderr, "%s:%d: empty image w/h %d/%d.\n",
-		 __FILE__, __LINE__, s->width, s->height);
-	return simage_status_bad_image;
-    }
-    if (s->width > MAXDIM || s->height > MAXDIM) {
-	fprintf (stderr, "%s:%d: oversize image w/h %d/%d.\n",
-		 __FILE__, __LINE__, s->width, s->height);
-	return simage_status_bad_image;
-    }
+    FAIL (s->width == 0 || s->height == 0, bad_image,
+	  "empty image w/h %d/%d.\n",
+	  s->width, s->height);
+    FAIL (s->width > MAXDIM || s->height > MAXDIM, bad_image,
+	  "oversize image w/h %d/%d.\n",
+	  s->width, s->height);
     return simage_ok;
 }
 
 simage_status_t
 simage_fill_grid (simage_t * s)
 {
-    if (s->grid_filled) {
-	fprintf (stderr, "%s:%d: double call to fill_grid.\n",
-		 __FILE__, __LINE__);
-	return simage_status_bad_logic;
-    }
+    FAIL (s->grid_filled, bad_logic, 
+	  "double call to fill_grid.\n");
     CALL (simage_check_image (s));
     CALL (simage_fill_entries (s));
     CALL (simage_make_differences (s));
@@ -475,55 +533,44 @@ int inside (int cell, int direction)
 
 
 simage_status_t
-simage_signature (simage_t * s, char ** signature_ptr, int * signature_length)
+simage_signature (simage_t * s)
 {
     int cell;
     int max_size;
-    int sl;
-    char * signature;
     max_size = DIRECTIONS * SIZE * SIZE;
-    signature = calloc (max_size + 1, sizeof (unsigned char));
-    if (! signature) {
-	fprintf (stderr, "%s:%d: memory error.\n", __FILE__, __LINE__);
-	return simage_memory_failure;
-    }
-    sl = 0;
+    s->signature = calloc (max_size + 1, sizeof (unsigned char));
+    CALL (simage_inc_nmallocs (s, s->signature));
+    s->signature_length = 0;
     for (cell = 0; cell < SIZE * SIZE; cell++) {
 	int direction;
 	for (direction = 0; direction < DIRECTIONS; direction++) {
 	    if (inside (cell, direction)) {
 		int value;
 		value = s->grid[cell].d[direction] + 2 + '0';
-		if (value < '0' || value > '5') {
-		    fprintf (stderr, "%s:%d: overflow %d at cell=%d direction=%d",
-			     __FILE__, __LINE__, value, cell, direction);
-		    return simage_status_bounds;
-		}
-		signature[sl] = (char) value;
-		sl++;
+		FAIL (value < '0' || value > '5', bounds,
+		      "overflow %d at cell=%d direction=%d",
+		      value, cell, direction);
+		s->signature[s->signature_length] = (char) value;
+		s->signature_length++;
+		FAIL (s->signature_length > max_size, bounds,
+		      "signature length %d > max size %d",
+		      s->signature_length, max_size);
 	    }
 	}
     }
-    * signature_ptr = signature;
-    * signature_length = sl;
-    
     return simage_ok;
 }
-
-simage_status_t simage_free_signature (char * signature)
-{
-    free (signature);
-    return simage_ok;
-}
-
 
 simage_status_t
-simage_fill_from_signature (simage_t * image, char * signature, int signature_length)
+simage_fill_from_signature (simage_t * s, char * signature, int signature_length)
 {
     // Cell number
     int c;
     // Offset into signature.
     int o;
+    s->signature = malloc (signature_length);
+    CALL (simage_inc_nmallocs (s, s->signature));
+    s->signature_length = signature_length;
     o = 0;
     for (c = 0; c < SIZE * SIZE; c++) {
 	/* The direction. */
@@ -536,16 +583,13 @@ simage_fill_from_signature (simage_t * image, char * signature, int signature_le
 		//printf ("%d %d %d\n", c, d, o);
 		/* The value of this cell. */
 		int value;
-		if (o >= signature_length) {
-		    fprintf (stderr, "%s:%d: offset %d exceeded signature length %d.\n",
-			     __FILE__, __LINE__, o, signature_length);
-		    continue;
-		    o++;
-//		    return simage_status_bounds;
-		}
+		FAIL (o >= signature_length, bounds,
+		      "offset %d exceeded signature length %d.\n",
+		      o, signature_length);
 		value = signature[o] - '0' - 2;
+		s->signature[o] = signature[o];
 		o++;
-		image->grid[c].d[d] = value;
+		s->grid[c].d[d] = value;
 	    }
 	}
     }

@@ -95,13 +95,9 @@ OUTPUT:
 SV *
 signature (image)
 	Image::Similar::Image image
-PREINIT:
-	int signature_length;
-	char * signature;
 CODE:
-	SIMAGE_CALL (simage_signature (image, & signature, & signature_length));
-	RETVAL = newSVpv (signature, (STRLEN) signature_length);
-	simage_free_signature (signature);
+	SIMAGE_CALL (simage_signature (image));
+	RETVAL = newSVpv (image->signature, (STRLEN) image->signature_length);
 OUTPUT:
 	RETVAL
 
