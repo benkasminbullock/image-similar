@@ -9,10 +9,15 @@ our @EXPORT_OK = qw/
 our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
+
 use Image::PNG::Libpng;
 use Image::PNG::Const ':all';
 use Scalar::Util 'looks_like_number';
 use Carp;
+
+our $VERSION = '0.04';
+require XSLoader;
+XSLoader::load ('Image::Similar', $VERSION);
 
 use constant {
     # Constants used for combining red, green, and blue values. These
@@ -30,9 +35,6 @@ use constant {
     half => 0.5,
 };
 
-our $VERSION = '0.03';
-require XSLoader;
-XSLoader::load ('Image::Similar', $VERSION);
 
 sub round
 {
