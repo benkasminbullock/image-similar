@@ -1,3 +1,17 @@
+/* This test file tests some of the small functions within
+   similar-image.c for sane behaviour. Its output is in TAP (Test
+   Anything Protocol) format. It can be compiled using
+
+  make -f mymakefile similar-image-test
+
+and then run with
+
+  prove ./similar-image-test
+
+It is also run by the author test xt/similar-image-test.t.
+
+*/
+
 #include <stdio.h>
 #include "similar-image.h"
 
@@ -21,19 +35,19 @@ test_xo_yo_to_direction (int * test)
     int xo, yo;
     simage_status_t status;
     direction = xo_yo_to_direction (-1, -1);
-    OK (direction == 0, (*test), "%d should be 0\n", direction);
+    OK (direction == 0, (*test), "%d should be 0", direction);
     status = direction_to_xo_yo (direction, & xo, & yo);
     OK (status == simage_ok, (*test), "status is OK");
     OK (xo == -1, (*test), "got correct value %d for xo", xo);
     OK (yo == -1, (*test), "got correct value %d for yo", yo);
     direction = xo_yo_to_direction (-1, 0);
-    OK (direction == 3, (*test), "%d should be 3\n", direction);
+    OK (direction == 3, (*test), "%d should be 3", direction);
     status = direction_to_xo_yo (direction, & xo, & yo);
     OK (status == simage_ok, (*test), "status is OK");
     OK (xo == -1, (*test), "got correct value %d for xo", xo);
     OK (yo == 0, (*test), "got correct value %d for yo", yo);
     direction = xo_yo_to_direction (1, 1);
-    OK (direction == 7, (*test), "%d should be 7\n", direction);
+    OK (direction == 7, (*test), "%d should be 7", direction);
     status = direction_to_xo_yo (direction, & xo, & yo);
     OK (status == simage_ok, (*test), "status is OK");
     OK (xo == 1, (*test), "got correct value %d for xo", xo);

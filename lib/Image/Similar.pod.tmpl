@@ -132,14 +132,17 @@ PNG file.
 
 =head2 load_image_gd
 
-    my $is = load_image_gd ($imager, %options);
+[% INCLUDE "gd.pl" | xtidy %]
+
+This is the internal routine used by L</load_image> to load L<GD>
+images.
 
 =head2 load_image_imager
 
     my $is = load_image_imager ($imager, %options);
 
 This is the internal routine used by L</load_image> to load L<Imager>
-images. The options are
+images.  It is not exported. The options are
 
 =over
 
@@ -148,7 +151,8 @@ images. The options are
     my $is = load_image_imager ($imager, make_grey_png => 'imager.png');
 
 Make the greyscale PNG for comparing to Image::Similar's internal
-version. See L</write_png> for details.
+version. See L</write_png> for how to extract Image::Similar's
+internal version.
 
 =back
 

@@ -264,6 +264,23 @@ simage_fill_entry (simage_t * s, int i, int j)
     y_min = round (yd - s->p / 2.0);
     x_max = round (xd + s->p / 2.0);
     y_max = round (yd + s->p / 2.0);
+
+    /* For very small images, these boundaries are sometimes
+       reached. */
+
+    if (y_max >= s->height) {
+	y_max = s->height - 1;
+    }
+    if (x_max >= s->width) {
+	x_max = s->width - 1;
+    }
+    if (x_min < 0) {
+	x_min = 0;
+    }
+    if (y_min < 0) {
+	y_min = 0;
+    }
+
     total = 0.0;
     for (py = y_min; py <= y_max; py++) {
 	FAIL (py < 0 || py >= s->height, bounds,
@@ -531,6 +548,13 @@ int inside (int cell, int direction)
     return 1;
 }
 
+simage_status_t
+simage_allocate_signature (simage_t * s, int size)
+{
+    s->signature = calloc (size + 1, sizeof (unsigned char));
+    CALL (simage_inc_nmallocs (s, s->signature));
+    return simage_ok;
+}
 
 simage_status_t
 simage_signature (simage_t * s)
@@ -538,8 +562,7 @@ simage_signature (simage_t * s)
     int cell;
     int max_size;
     max_size = DIRECTIONS * SIZE * SIZE;
-    s->signature = calloc (max_size + 1, sizeof (unsigned char));
-    CALL (simage_inc_nmallocs (s, s->signature));
+    CALL (simage_allocate_signature (s, max_size));
     s->signature_length = 0;
     for (cell = 0; cell < SIZE * SIZE; cell++) {
 	int direction;
@@ -568,8 +591,7 @@ simage_fill_from_signature (simage_t * s, char * signature, int signature_length
     int c;
     // Offset into signature.
     int o;
-    s->signature = malloc (signature_length);
-    CALL (simage_inc_nmallocs (s, s->signature));
+    CALL (simage_allocate_signature (s, signature_length));
     s->signature_length = signature_length;
     o = 0;
     for (c = 0; c < SIZE * SIZE; c++) {
@@ -593,5 +615,6 @@ simage_fill_from_signature (simage_t * s, char * signature, int signature_length
 	    }
 	}
     }
+    s->signature[s->signature_length] = '\0';
     return simage_ok;
 }
