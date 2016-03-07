@@ -45,9 +45,8 @@ This is used for some internals of Image::Similar related to testing
 thus it was installed when you installed Image::Similar. However,
 Image::PNG::Libpng is only for PNG images.
 
-Image::Similar currently supports GRAY, GRAY_ALPHA, RGB, and RGBA
-C<Image::PNG::Libpng> image types, but not paletted image types. It
-only supports bit depths of eight.
+Image::Similar supports all PNG image types. It currently only
+supports bit depths of eight.
 
 RGB images are combined to greyscale using constants taken from the
 source code of L<Imager>. As of this version, there is no handling of
@@ -209,7 +208,16 @@ containing strings of bytes, one byte per pixel.
 	# do something with image data
     }
 
-This returns a true value only if C<$image> contains valid image data.
+This returns a true value only if C<$image> contains valid image
+data. This is to distinguish between an image which is loaded from a
+stored signature using L</fill_from_sig> and one which is loaded from
+an actual image.
+
+=head3 fill_from_sig
+
+    my $image = Image::Similar::Image::fill_from_sig ($sig);
+
+Fill C<$image> using signature data.
 
 =head1 KNOWN PROBLEMS
 
@@ -247,6 +255,12 @@ it only uses the raw pixel values.
 This uses a similar algorithm to Image::Similar, but it requires
 installing a third-party library called libpuzzle, as well as the gd
 library. 
+
+=item L<Image::Seek>
+
+This uses L<ImgSeek|http://www.imgseek.net/> to find similar pictures
+in a library. It can load images via L<Imager>, L<Image::Imlib2>, or
+L<GD>.
 
 =back
 

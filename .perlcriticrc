@@ -17,6 +17,8 @@ severity = 1
 # functions, including builtins, we don't need to capitalize
 # constants.
 [-NamingConventions::Capitalization]
+# Why?
+[-ControlStructures::ProhibitCascadingIfElse]
 # Local variables:
 # mode: conf
 # End:

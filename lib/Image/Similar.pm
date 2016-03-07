@@ -25,6 +25,8 @@ use constant {
     red => 0.222,
     green => 0.707,
     blue => 0.071,
+    # png bit depth
+    png_bit_depth => 8,
     # bytes per pixel for rgb
     rgb_bytes => 3,
     # bytes per pixel for rgba
@@ -142,6 +144,14 @@ sub load_image_imager
 #     return 1;
 # }
 
+sub rgb_to_grey
+{
+    my ($r, $g, $b) = @_;
+    my $grey = red * $r + green * $g + blue * $b;
+    $grey = round ($grey);
+    return $grey;
+}
+
 sub load_image_libpng
 {
     my ($image) = @_;
@@ -152,6 +162,10 @@ sub load_image_libpng
     my $is = Image::Similar->new (height => $height,
 				  width => $width);
     my $rows = $image->get_rows ();
+    if ($ihdr->{bit_depth} != png_bit_depth) {
+	carp "Cannot handle PNG images of bit depth $ihdr->{bit_depth}";
+	return undef;
+    }
     if ($ihdr->{color_type} == PNG_COLOR_TYPE_GRAY) {
 	# GRAY
 	for my $y (0..$height-1) {
@@ -189,14 +203,32 @@ sub load_image_libpng
 		my $g = ord (substr ($rows->[$y], $x * $offset + 1, 1));
 		my $b = ord (substr ($rows->[$y], $x * $offset + 2, 1));
 		# https://metacpan.org/pod/distribution/Imager/lib/Imager/Transformations.pod
-		my $grey = red * $r + green * $g + blue * $b;
-		$grey = round ($grey);
+		my $grey = rgb_to_grey ($r, $g, $b);
+		$is->{image}->set_pixel ($x, $y, $grey);
+	    }
+	}
+    }
+    elsif ($ihdr->{color_type} == PNG_COLOR_TYPE_PALETTE) {
+	my $palette = $image->get_PLTE ();
+	my @grey;
+	my $i = 0;
+	for my $colour (@{$palette}) {
+	    my $r = $colour->{red};
+	    my $g = $colour->{green};
+	    my $b = $colour->{blue};
+	    $grey[$i] = rgb_to_grey ($r, $g, $b);
+	    $i++;
+	}
+	for my $y (0..$height-1) {
+	    for my $x (0..$width-1) {
+		my $grey = $grey [ord (substr ($rows->[$y], $x, 1))];
 		$is->{image}->set_pixel ($x, $y, $grey);
 	    }
 	}
     }
     else {
 	carp "Cannot handle image of colour type $ihdr->{color_type}";
+	return undef;
     }
     return $is;
 }
