@@ -1,5 +1,9 @@
 Revision history for Perl module Image::Similar
 
+0.05 2016-08-23
+
+- Write a better example for the synopsis
+
 0.04 2016-02-27
 
 - Ensure no overflows for very small images
