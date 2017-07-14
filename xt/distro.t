@@ -1,8 +1,8 @@
 use warnings;
 use strict;
 use Test::More;
-use FindBin;
-my $file = "$FindBin::Bin/../Makefile.PL";
+use FindBin '$Bin';
+my $file = "$Bin/../Makefile.PL";
 open my $in, "<", $file or die $!;
 while (<$in>) {
     if (/-Wall/) {

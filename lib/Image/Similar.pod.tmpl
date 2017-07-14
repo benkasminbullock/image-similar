@@ -1,3 +1,10 @@
+[% MACRO example(file) BLOCK %]
+[%- pl = file _ ".pl" -%]
+[%- out = file _ "-out.txt" -%]
+[% INCLUDE $pl | xtidy %]
+
+(This example is included as L<F<[% pl %]>|https://fastapi.metacpan.org/source/BKB/[% info.name %]-[% info.version %]/examples/[% pl %]> in the distribution.)
+[% END %]
 [% start_year=2016 %]
 =encoding UTF-8
 
@@ -7,12 +14,13 @@ Image::Similar - find out how similar two images are
 
 =head1 SYNOPSIS
 
-[% INCLUDE "synopsis.pl" | xtidy %]
+[% example("synopsis") %]
 
 =head1 VERSION
 
-This documents version [% version %] of Image::Similar corresponding to git
-commit [% commit.commit %] released on [% commit.date %].
+This documents [% info.colon %] version [% info.version %]
+corresponding to git commit L<[% commit.commit %]|[% info.repo
+%]/commit/[% commit.commit %]> released on [% commit.date %].
 
 =head1 DESCRIPTION
 
@@ -21,29 +29,37 @@ simplified form of the algorithm described in L</An image signature
 for any kind of image> to calculate image signatures and distances
 between images.
 
+The algorithm consists of converting the image into greyscale,
+chopping it into a grid, and then computing a signature based on
+relative lightness and darkness of the blocks of the grid.
+
 The module does not contain its own image-reading facility, so images
 must be loaded to the module via one of the following supported Perl
 modules:
 
 =over
 
+=item L<Imager> (recommended)
+
+All image types are supported. If you have no preference, I suggest
+using Imager, since it is a very well-behaved module. The conversion
+to greyscale is done using Imager's own routines.
+
 =item L<GD>
 
 All image types are supported. RGB images are combined to greyscale
 using constants taken from the source code of L<Imager>.
 
-=item L<Imager>
+=item L<Image::Imlib2>
 
-All image types are supported. Unless you only need to compare PNG
-images, and if you have no prior preference, we suggest using Imager
-since it is a very well-behaved module. The conversion to greyscale is
-done using Imager's own routines.
+All image types are supported. RGB images are combined to greyscale
+using constants taken from the source code of L<Imager>.
 
 =item L<Image::PNG::Libpng>
 
-This is used for some internals of Image::Similar related to testing
-thus it was installed when you installed Image::Similar. However,
-Image::PNG::Libpng is only for PNG images.
+This module is used for some internals of Image::Similar related to
+testing, thus it was installed when you installed
+Image::Similar. However, Image::PNG::Libpng is only for PNG images.
 
 Image::Similar supports all PNG image types. It currently only
 supports bit depths of eight.
@@ -90,15 +106,15 @@ which you need to use the L</set_pixel> method on to set the pixels.
 This returns a floating-point number which is the difference between
 images C<$is1> and C<$is2>. This is meant to be approximately the same
 value as given by L<Image::Libpuzzle/vector_euclidean_length()>, but
-no validation has been carried out yet.
+no validation has been carried out. Both C<$is1> and C<$is2> are
+Image::Similar objects created using L</load_image>.
 
 =head2 signature
 
     my $sig = $is->signature ();
 
-Get the signature of the image. This is currently a text string
-consisting of digits 0-4 which identifies the image. This is liable to
-change with future versions of the module.
+Get the signature of the image. This is a text string
+consisting of digits 0-4 which identifies the image.
 
 =head2 sig_diff
 
@@ -162,7 +178,7 @@ internal version.
 This loads an image from the return value of
 L<Image::PNG::Libpng/read_png_file>.
 
-=head2 INTERNAL Image::Similar::Image METHODS
+=head2 Image::Similar::Image methods
 
 These methods work on the XS object within an Image::Similar, which is
 called Image::Similar::Image.
@@ -171,10 +187,11 @@ called Image::Similar::Image.
 
     fill_grid ($img);
 
-Calculate the image's signature and store it within C<$img>. This
-method is called automatically by L</load_image>, and it does not need
-to be called by L</load_signature>, which overrides it with values
-from the signature, so it should only be used when calling L</new>,
+Calculate the image's signature and store it within C<$img>. All the
+pixel values should have been set with L</set_pixel> before calling
+this. This method is called automatically by
+L</load_image>. L</load_signature> overrides it with values from the
+signature, so this method should only be used when calling L</new>,
 filling the pixels by the user, and then making the signature "by
 hand" rather than via L</load_image>.
 
@@ -182,14 +199,19 @@ hand" rather than via L</load_image>.
 
     my $diff = image_diff ($img1, $img2);
 
-Compute the value for L</diff>.
+This computes the value of L</diff> from the signatures within
+C<$img1> and C<$img2>.
 
 =head3 set_pixel
 
     $img->set_pixel ($x, $y, $grey);
 
-C<$x> and C<$y> need to be integers, and C<$grey> needs to be an
-integer within 0-255.
+Set a greyscale pixel within the image.  C<$x> and C<$y> need to be
+integers, and C<$grey> needs to be an integer between 0-255. Typically
+one would first set the width and height of the image with L</new>,
+then get the Image::Similar::Image object from the Image::Similar
+object, then set its pixels with this method, then compute its
+signature with L</fill_grid>.
 
 =head3 get_rows
 
@@ -201,6 +223,9 @@ containing strings of bytes, one byte per pixel.
 =head3 signature
 
     my $sig = $image->signature ();
+
+Return the signature value which is set either by L</fill_grid> or
+directly by L</fill_from_sig>.
 
 =head3 valid_image
 
@@ -218,6 +243,19 @@ an actual image.
     my $image = Image::Similar::Image::fill_from_sig ($sig);
 
 Fill C<$image> using signature data.
+
+=head1 EXAMPLES
+
+=head2 Search many files for duplicate images
+
+This script makes a list of all files which may be images:
+
+[% example("find-all-images") %]
+
+This script then gets all the signatures of the images and compares
+them looking for similar images.
+
+[% example("make-signatures") %]
 
 =head1 KNOWN PROBLEMS
 
@@ -274,6 +312,25 @@ I<An image signature for any kind of image> by H. Chi Wong, Marshall
 Bern, and David Goldberg, published in I<Proceedings: 2002
 International Conference on Image Processing>, Volume 1, date 22-25
 September 2002.
+
+=back
+
+=head1 DEPENDENCIES
+
+=over
+
+=item L<Image::PNG::Libpng>
+
+This is the fallback image loading module used if no other option is
+installed.
+
+=item L<Scalar::Util/looks_like_number>
+
+This is used to validate the parameters of L</new>.
+
+=item L<Carp/carp>
+
+This is used to warn the user about input values.
 
 =back
 
