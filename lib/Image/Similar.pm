@@ -15,7 +15,7 @@ use Image::PNG::Const ':all';
 use Scalar::Util 'looks_like_number';
 use Carp;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 require XSLoader;
 XSLoader::load ('Image::Similar', $VERSION);
 

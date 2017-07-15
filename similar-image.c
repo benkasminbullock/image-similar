@@ -15,7 +15,8 @@
 
 /* A point in the grid. */
 
-typedef struct point {
+typedef struct point
+{
     double average_grey_level;
     int d[DIRECTIONS];
 }
@@ -23,7 +24,8 @@ point_t;
 
 typedef int (*simage_error_channel_t) (void * s, const char * format, ...);
 
-typedef struct simage {
+typedef struct simage
+{
     /* The width of the image in pixels. */
     unsigned int width;
     /* The height of the image in pixels. */
@@ -55,7 +57,8 @@ typedef struct simage {
 }
 simage_t;
 
-typedef enum {
+typedef enum
+{
     simage_ok,
     /* malloc failed. */
     simage_status_memory_failure,
@@ -71,7 +74,8 @@ typedef enum {
 }
 simage_status_t;
 
-typedef enum {
+typedef enum
+{
     much_darker = -2,
     darker = -1,
     same = 0,
@@ -555,11 +559,17 @@ simage_allocate_signature (simage_t * s, int size)
     return simage_ok;
 }
 
+/* Compute the signature of "s->data". If it has already been
+   computed, return without doing anything. */
+
 simage_status_t
 simage_signature (simage_t * s)
 {
     int cell;
     int max_size;
+    if (s->signature) {
+	return simage_ok;
+    }
     max_size = DIRECTIONS * SIZE * SIZE;
     CALL (simage_allocate_signature (s, max_size));
     s->signature_length = 0;

@@ -77,6 +77,9 @@ Use L</load_image> to load the image.
 
 =head2 load_image
 
+This loads image data from various modules into an Image::Similar
+object. The return value is the Image::Similar object.
+
 Using L<Imager>:
 
 [% INCLUDE "imager.pl" | xtidy %]
@@ -86,6 +89,14 @@ Using L<Image::PNG::Libpng>:
 [% INCLUDE "libpng.pl" | xtidy %]
 
 The return value is an Image::Similar object.
+
+Using L<GD>:
+
+[% INCLUDE "gd.pl" | xtidy %]
+
+Using L<Image::Imlib2>:
+
+[% INCLUDE "imlib2.pl" | xtidy %]
 
 =head1 METHODS
 
@@ -114,7 +125,13 @@ Image::Similar objects created using L</load_image>.
     my $sig = $is->signature ();
 
 Get the signature of the image. This is a text string
-consisting of digits 0-4 which identifies the image.
+consisting of digits 0-4 which identifies the image. The following example demonstrates getting the signature of two similar images.
+
+[% example("show-hash") %]
+
+Its output looks like this:
+
+[% INCLUDE "show-hash-out.txt" | xtidy %]
 
 =head2 sig_diff
 
@@ -317,6 +334,26 @@ I<An image signature for any kind of image> by H. Chi Wong, Marshall
 Bern, and David Goldberg, published in I<Proceedings: 2002
 International Conference on Image Processing>, Volume 1, date 22-25
 September 2002.
+
+=back
+
+=head2 Other
+
+=over
+
+=item L<Finding Similar Images|http://www.linux-mag.com/id/1437/>
+
+An article from Randal Schwartz from 2003. Contains Perl source code
+for finding similar images. 
+
+=item L<Questions about image similarity at Stackoverflow|https://stackoverflow.com/questions/tagged/similarity+image>
+
+Contains information about more libraries.
+
+=item L<findimagedupes|http://www.jhnc.org/findimagedupes/>
+
+A Perl script for finding duplicate and similar images by Rob Kudla /
+Jonathan H N Chin.
 
 =back
 
