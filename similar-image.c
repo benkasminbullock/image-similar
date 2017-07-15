@@ -178,11 +178,10 @@ simage_init (simage_t * s, unsigned int width, unsigned int height)
     if (height < min_w_h) {
 	min_w_h = height;
     }
-    p = (unsigned int) (floor (0.5 + ((double) min_w_h)/20.0));
+    p = (unsigned int) (floor (0.5 + ((double) min_w_h) / 20.0));
     if (p > s->p) {
 	s->p = p;
     }
-    //    simage_dump (s); 
 
     // This contains a valid image data, although it is just black
     // pixels at the moment.
