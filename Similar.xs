@@ -73,7 +73,7 @@ Image::Similar::Image
 fill_from_sig (sig)
 	SV * sig;
 PREINIT:
-	char * signature;
+	const char * signature;
 	STRLEN signature_length;
 CODE:
 	Newxz (RETVAL, 1, simage_t);
