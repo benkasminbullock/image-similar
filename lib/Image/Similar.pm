@@ -78,7 +78,7 @@ sub fill_grid
 
 sub load_image_gd
 {
-    my ($gd, %options) = @_;
+    my ($gd) = @_;
     my ($width, $height) = $gd->getBounds ();
     my $is = Image::Similar->new (height => $height, width => $width);
     my $image = $is->{image};
@@ -98,14 +98,14 @@ sub load_image_gd
 
 sub load_image_imlib2
 {
-    my ($imlib2, %options) = @_;
+    my ($imlib2) = @_;
     my $height = $imlib2->height ();
     my $width = $imlib2->width ();
     my $is = Image::Similar->new (height => $height, width => $width);
     my $image = $is->{image};
     for my $y (0..$height - 1) {
 	for my $x (0..$width - 1) {
-	    my ($r, $g, $b, $a) = $imlib2->query_pixel ($x, $y);
+	    my ($r, $g, $b, undef) = $imlib2->query_pixel ($x, $y);
 	    my $greypixel = round (red * $r + green * $g + blue * $b);
 	    $image->set_pixel ($x, $y, $greypixel);
 	}
