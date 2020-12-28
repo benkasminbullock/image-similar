@@ -4,18 +4,19 @@ use strict;
 use base 'Exporter';
 our @EXPORT_OK = qw/
 		       load_image
+		       load_image_file
 		       load_signature
 		   /;
 our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
 
-use Image::PNG::Libpng;
+use Image::PNG::Libpng '0.56', 'any2gray8';
 use Image::PNG::Const ':all';
 use Scalar::Util 'looks_like_number';
 use Carp;
 
-our $VERSION = '0.07';
+our $VERSION = '0.07_01';
 require XSLoader;
 XSLoader::load ('Image::Similar', $VERSION);
 
@@ -150,14 +151,29 @@ sub rgb_to_grey
     return $grey;
 }
 
+sub load_png_file
+{
+    my ($file) = @_;
+    my $png = any2gray8 ($file);
+    my $height = $png->height ();
+    my $width = $png->width ();
+    my $is = Image::Similar->new (height => $height, width => $width);
+    my $rows = $png->get_rows ();
+    for my $y (0..$height-1) {
+	for my $x (0..$width-1) {
+	    my $grey = ord (substr ($rows->[$y], $x, 1));
+	    $is->{image}->set_pixel ($x, $y, $grey);
+	}
+    }
+}
+
 sub load_image_libpng
 {
     my ($image) = @_;
     my $ihdr = $image->get_IHDR ();
     my $height = $ihdr->{height};
     my $width = $ihdr->{width};
-    my $is = Image::Similar->new (height => $height,
-				  width => $width);
+    my $is = Image::Similar->new (height => $height, width => $width);
     my $rows = $image->get_rows ();
     if ($ihdr->{bit_depth} != png_bit_depth) {
 	carp "Cannot handle PNG images of bit depth $ihdr->{bit_depth}";
@@ -284,7 +300,7 @@ sub Image::Similar::write_png
 	    height => $is->{height},
 	    width => $is->{width},
 	    bit_depth => 8,
-	    color_type => 0, # Image::PNG::Const::PNG_COLOR_TYPE_GRAY,
+	    color_type => Image::PNG::Const::PNG_COLOR_TYPE_GRAY,
 	});
 	my $rows = $is->{image}->get_rows ();
 	if (scalar (@{$rows}) != $is->{height}) {
