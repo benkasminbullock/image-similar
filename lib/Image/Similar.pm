@@ -11,7 +11,8 @@ our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
 
-use Image::PNG::Libpng '0.56', 'any2gray8';
+use Image::PNG::Libpng '0.56';
+use Image::PNG::Data 'any2gray8';
 use Image::PNG::Const ':all';
 use Scalar::Util 'looks_like_number';
 use Carp;
